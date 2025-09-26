@@ -9,83 +9,9 @@ except Exception:
 import matplotlib.pyplot as plt
 import os
 import sys
-from typing import List, Tuple, Dict, Any
 import warnings
 
 warnings.filterwarnings("ignore")
-
-
-def source(
-    NA: float,
-    type: int,
-    sigma1: float,
-    sigma2: float,
-    openangle: float,
-    k: float,
-    dx: float,
-    dy: float,
-    ndivs: int,
-    MX: int,
-    MY: int,
-) -> Tuple[List, List, np.ndarray]:
-    """Calculate source distribution
-
-    Args:
-        NA: Numerical aperture
-        type: Source type (0: circular, 1: annular, 2: dipole)
-        sigma1: Outer sigma
-        sigma2: Inner sigma
-        openangle: Opening angle for dipole
-        k: Wave number
-        dx, dy: Pitch
-        ndivs: Number of divisions
-        MX, MY: Magnification
-
-    Returns:
-        l0s, m0s: Source coordinates
-        SDIV: Source division array
-    """
-    dkxang = 2.0 * np.pi / dx
-    dkyang = 2.0 * np.pi / dy
-    skangx = k * NA / MX * sigma1
-    skangy = k * NA / MY * sigma1
-    l0max = int(skangx / dkxang) + 1
-    m0max = int(skangy / dkyang) + 1
-
-    l0s = [[[] for _ in range(ndivs)] for _ in range(ndivs)]
-    m0s = [[[] for _ in range(ndivs)] for _ in range(ndivs)]
-    SDIV = np.zeros((ndivs, ndivs), dtype=int)
-
-    for nsx in range(ndivs):
-        for nsy in range(ndivs):
-            for l in range(-l0max, l0max + 1):
-                for m in range(-m0max, m0max + 1):
-                    skx = l * dkxang + 2.0 * np.pi / dx * nsx / ndivs
-                    sky = m * dkyang + 2.0 * np.pi / dy * nsy / ndivs
-                    skxo = skx * MX
-                    skyo = sky * MY
-
-                    condition = False
-                    if type == 0:  # circular
-                        condition = (skxo**2 + skyo**2) <= (k * NA * sigma1) ** 2
-                    elif type == 1:  # annular
-                        r = np.sqrt(skxo**2 + skyo**2)
-                        condition = k * NA * sigma2 <= r <= k * NA * sigma1
-                    elif type == 2:  # dipole
-                        r = np.sqrt(skxo**2 + skyo**2)
-                        angle_condition = abs(skyo) <= abs(skxo) * np.tan(
-                            np.pi * openangle / 180.0 / 2.0
-                        )
-                        condition = (
-                            k * NA * sigma2 <= r <= k * NA * sigma1
-                        ) and angle_condition
-
-                    if condition:
-                        l0s[nsx][nsy].append(l)
-                        m0s[nsx][nsy].append(m)
-                        SDIV[nsx][nsy] += 1
-
-    return l0s, m0s, SDIV
 
 
 def exponential(FDIV: int) -> np.ndarray:
