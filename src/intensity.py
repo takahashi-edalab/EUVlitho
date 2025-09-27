@@ -1,351 +1,234 @@
 import numpy as np
-import pandas as pd
-
-try:
-    from scipy.fft import fft2, ifft2
-except Exception:
-    # fall back to numpy.fft if scipy.fft is not available in the environment
-    from numpy.fft import fft2, ifft2
-import matplotlib.pyplot as plt
-import os
-import sys
-import warnings
-
-warnings.filterwarnings("ignore")
+from src import const
+from src.diffraction_amplitude import diffraction_amplitude
+from src.source import source
 
 
-def exponential(FDIV: int) -> np.ndarray:
-    """Calculate exponential terms for Fourier transform"""
-    cexp = np.zeros(FDIV + 1, dtype=complex)
-    for i in range(FDIV + 1):
-        cexp[i] = np.exp(-2j * np.pi * i / FDIV)
-    return cexp
+# def exponential(FDIV: int) -> np.ndarray:
+#     """Calculate exponential terms for Fourier transform"""
+#     cexp = np.zeros(FDIV + 1, dtype=complex)
+#     for i in range(FDIV + 1):
+#         cexp[i] = np.exp(-2j * np.pi * i / FDIV)
+#     return cexp
 
 
-def fourier(l: int, f: np.ndarray, cexp: np.ndarray, FDIV: int) -> complex:
-    i = np.arange(FDIV)
-    if l >= 0:
-        j = (i * l) % FDIV
-    else:
-        j = FDIV - ((-i * l) % FDIV)
-    return np.sum(f * cexp[j]) / FDIV
-
-
-def find_valid_output_points(
-    noutX: int,
-    noutY: int,
-    nsourceX: int,
-    nsourceY: int,
-    lsmaxX: int,
-    lsmaxY: int,
-    lpmaxX: int,
-    lpmaxY: int,
-    NA: float,
-    dx: float,
-    dy: float,
-    MX: int,
-    MY: int,
-    lambda_wl: float,
-) -> Tuple[np.ndarray, np.ndarray, int]:
+def find_valid_output_points() -> tuple[np.ndarray, np.ndarray]:
     """Find valid output points based on source and pupil conditions"""
     linput = []
     minput = []
-    for ip in range(noutX):
-        for jp in range(noutY):
+    for ip in range(const.noutX):
+        for jp in range(const.noutY):
             snum = 0
-            for is_src in range(nsourceX):
-                for js_src in range(nsourceY):
-                    source_condition = ((is_src - lsmaxX) * MX / dx) ** 2 + (
-                        (js_src - lsmaxY) * MY / dy
-                    ) ** 2 <= (NA / lambda_wl) ** 2
+            for is_src in range(const.nsourceX):
+                for js_src in range(const.nsourceY):
+                    source_condition = (
+                        (is_src - const.lsmaxX) * const.MX / const.dx
+                    ) ** 2 + ((js_src - const.lsmaxY) * const.MY / const.dy) ** 2 <= (
+                        const.NA / const.wavelength
+                    ) ** 2
                     pupil_condition = (
-                        (ip - lpmaxX + is_src - lsmaxX) * MX / dx
-                    ) ** 2 + ((jp - lpmaxY + js_src - lsmaxY) * MY / dy) ** 2 <= (
-                        NA / lambda_wl
+                        (ip - const.lpmaxX + is_src - const.lsmaxX)
+                        * const.MX
+                        / const.dx
+                    ) ** 2 + (
+                        (jp - const.lpmaxY + js_src - const.lsmaxY)
+                        * const.MY
+                        / const.dy
+                    ) ** 2 <= (
+                        const.NA / const.wavelength
                     ) ** 2
                     if source_condition and pupil_condition:
                         snum += 1
 
             if snum > 0:
-                linput.append(ip - lpmaxX)
-                minput.append(jp - lpmaxY)
+                linput.append(ip - const.lpmaxX)
+                minput.append(jp - const.lpmaxY)
 
     linput = np.array(linput)
     minput = np.array(minput)
     return linput, minput
 
 
-class EUVIntensityCalculator:
-    """EUV Lithography Intensity Calculation Class
+def na_filter_amplitude_map(Ax: np.ndarray) -> np.ndarray:
+    ampxx = np.full(
+        (const.nsourceXL, const.nsourceYL, const.noutXL, const.noutYL),
+        -1000 + 0j,
+        dtype=np.complex128,
+    )
+    is_idx = np.arange(const.nsourceXL)[:, None]  # shape (nsourceXL, 1)
+    js_idx = np.arange(const.nsourceYL)[None, :]  # shape (1, nsourceYL)
 
-    This class calculates the aerial image intensity for EUV lithography
-    based on mask patterns and illumination conditions.
-    """
+    condition = (
+        ((is_idx - const.lsmaxX) * const.MX / const.dx) ** 2
+        + ((js_idx - const.lsmaxY) * const.MY / const.dy) ** 2
+    ) <= (const.NA / const.wavelength) ** 2
 
-    def __init__(self):
-        pass
+    mask3d = condition[:, :, None]
 
-    def fourier(self, l: int, f: np.ndarray, cexp: np.ndarray, FDIV: int) -> complex:
-        """Calculate Fourier coefficient"""
-        result = 0.0 + 0.0j
-        for i in range(FDIV):
-            result += f[i] * cexp[(l * i) % (FDIV + 1)]
-        return result / FDIV
+    ip_all = (
+        const.lindex[None, None, :]
+        - (is_idx - const.lsmaxX)[:, None, None]
+        + const.lpmaxX
+    )  # shape (nsourceXL, 1, Nrange)
+    jp_all = (
+        const.mindex[None, None, :]
+        - (js_idx - const.lsmaxY)[None, :, None]
+        + const.lpmaxY
+    )  # shape (1, nsourceYL, Nrange)
 
-    def load_mask(self, filename: str) -> np.ndarray:
-        shape = (self.NDIVY, self.NDIVX)
-        data = np.fromfile(filename, dtype=np.uint8)
-        unpacked = np.unpackbits(data)[: np.prod(shape)]
-        # mask_restored = unpacked.reshape(shape)
-        return unpacked
+    valid_ip = (0 <= ip_all) & (ip_all < const.noutXL)
+    valid_jp = (0 <= jp_all) & (jp_all < const.noutYL)
+    valid_mask = mask3d & valid_ip & valid_jp
+    # Get indices where the mask is True
+    I, J, N = np.nonzero(valid_mask)
+    ip_valid = ip_all[I, J, N]
+    jp_valid = jp_all[I, J, N]
 
-    def calculate_intensity(
-        self, mask_file: str, output_file: str = "emint.csv"
-    ) -> None:
-        """Main intensity calculation function"""
-        print("Starting EUV intensity calculation...")
+    ampxx[I, J, ip_valid, jp_valid] = Ax[I, J, N]
+    return ampxx
 
-        # Load mask pattern
-        mask2d = self.load_mask(mask_file)
-        print(f"Loaded mask pattern from {mask_file}")
-        print(f"Mask pattern shape: {mask2d.shape}")
 
-        # Calculate source parameters
-        ndivs = max(1, int(180.0 / self.pi * self.lambda_wl / self.dx / self.sigmadiv))
-        l0s, m0s, SDIV = source(
-            self.NA,
-            self.type,
-            self.sigma1,
-            self.sigma2,
-            self.openangle,
-            self.k,
-            self.dx,
-            self.dy,
-            ndivs,
-            self.MX,
-            self.MY,
-        )
+def intensity(mask2d: np.ndarray) -> np.ndarray:
+    l0s, m0s, SDIV = source()
+    SDIVMAX = np.max(SDIV)
+    SDIVSUM = np.sum(SDIV)
 
-        SDIVMAX = np.max(SDIV)
-        SDIVSUM = np.sum(SDIV)
-        print(
-            f"Source divisions: {ndivs}x{ndivs}, SDIVMAX: {SDIVMAX}, SDIVSUM: {SDIVSUM}"
-        )
+    linput, minput = find_valid_output_points()
+    ncut = len(linput)
 
-        # Calculate diffraction limits
-        lsmaxX = int(self.NA * self.dx / self.MX / self.lambda_wl) + 1
-        lsmaxY = int(self.NA * self.dy / self.MY / self.lambda_wl) + 1
-        lpmaxX = int(self.NA * self.dx / self.MX * 2 / self.lambda_wl) + 1
-        lpmaxY = int(self.NA * self.dy / self.MY * 2 / self.lambda_wl) + 1
+    isum = np.zeros((const.ndivs, const.ndivs, const.XDIV, const.XDIV, SDIVMAX))
+    for nsx in range(const.ndivs):
+        for nsy in range(const.ndivs):
+            kx0 = (
+                const.k
+                * np.sin(np.deg2rad(const.theta0))
+                * np.cos(np.deg2rad(const.phi0))
+            )
+            ky0 = (
+                const.k
+                * np.sin(np.deg2rad(const.theta0))
+                * np.sin(np.deg2rad(const.phi0))
+            )
+            sx0 = 2.0 * const.pi / const.dx * nsx / const.ndivs + kx0
+            sy0 = 2.0 * const.pi / const.dy * nsy / const.ndivs + ky0
 
-        nsourceX = 2 * lsmaxX + 1
-        nsourceY = 2 * lsmaxY + 1
-        noutX = 2 * lpmaxX + 1
-        noutY = 2 * lpmaxY + 1
+            Ax = diffraction_amplitude("X", mask2d, sx0, sy0)
+            ampxx = na_filter_amplitude_map(Ax)
 
-        FDIVX = int(self.dx / self.delta + 1e-6)
-        FDIVY = int(self.dy / self.delta + 1e-6)
-        cexpx = exponential(FDIVX)
-        cexpy = exponential(FDIVY)
-        print(
-            f"Diffraction parameters: lsmax=({lsmaxX},{lsmaxY}), lpmax=({lpmaxX},{lpmaxY})"
-        )
+            # ---- Ex0m / Ey0m / Ez0m ----
+            Ex0m = np.zeros((SDIV[nsx, nsy], ncut), dtype=complex)
+            Ey0m = np.zeros_like(Ex0m)
+            Ez0m = np.zeros_like(Ex0m)
 
-        # Setup diffraction order limits
-        lindex, mindex = difraction_order_limits()
-        Nrange = len(lindex)
-        print(f"Number of diffraction orders: {Nrange}")
+            for isd in range(SDIV[nsx, nsy]):
+                kx = sx0 + 2.0 * const.pi / const.dx * l0s[nsx][nsy][isd]
+                ky = sy0 + 2.0 * const.pi / const.dy * m0s[nsx][nsy][isd]
+                ls = l0s[nsx][nsy][isd] + const.lsmaxX
+                ms = m0s[nsx][nsy][isd] + const.lsmaxY
+                for i in range(ncut):
+                    kxplus = kx + 2 * const.pi * linput[i] / const.dx
+                    kyplus = ky + 2 * const.pi * minput[i] / const.dy
+                    kxy2 = kxplus**2 + kyplus**2
+                    klm = np.sqrt(const.k * const.k - kxy2)
+                    ip = linput[i] + const.lpmaxX
+                    jp = minput[i] + const.lpmaxY
 
-        # Find valid output points
-        linput, minput = find_valid_output_points(
-            noutX,
-            noutY,
-            nsourceX,
-            nsourceY,
-            lsmaxX,
-            lsmaxY,
-            lpmaxX,
-            lpmaxY,
-            self.NA,
-            self.dx,
-            self.dy,
-            self.MX,
-            self.MY,
-            self.lambda_wl,
-        )
+                    Ax_val = ampxx[ls, ms, ip, jp] / np.sqrt(
+                        const.k * const.k - kx * kx
+                    )
+                    Ay_val = 0
 
-        ncut = len(linput)
-        linput = np.array(linput)
-        minput = np.array(minput)
-        print(f"Number of valid output points: {ncut}")
+                    EAx = (
+                        const.i_complex * const.k * Ax_val
+                        - const.i_complex
+                        / const.k
+                        * (kxplus**2 * Ax_val + kxplus * kyplus * Ay_val)
+                    )
+                    EAy = (
+                        const.i_complex * const.k * Ay_val
+                        - const.i_complex
+                        / const.k
+                        * (kxplus * kyplus * Ax_val + kyplus**2 * Ay_val)
+                    )
+                    EAz = (
+                        const.i_complex
+                        * klm
+                        / const.k
+                        * (kxplus * Ax_val + kyplus * Ay_val)
+                    )
+                    Ex0m[isd, i] = EAx
+                    Ey0m[isd, i] = EAy
+                    Ez0m[isd, i] = EAz
 
-        # Initialize intensity arrays
-        isum = np.zeros((ndivs, ndivs, self.XDIV, self.XDIV, SDIVMAX))
+            # ---- FFT & isum更新 ----
+            for isd in range(SDIV[nsx, nsy]):
+                fnx = np.zeros((const.XDIV, const.XDIV), dtype=complex)
+                fny = np.zeros_like(fnx)
+                fnz = np.zeros_like(fnx)
 
-        # Main calculation loop
-        print("Starting main calculation loop...")
-        for nsx in range(ndivs):
-            for nsy in range(ndivs):
-                print(f"Processing source point ({nsx+1}/{ndivs}, {nsy+1}/{ndivs})")
-
-                # Calculate source angles
-                kx0 = (
-                    self.k
-                    * np.sin(self.pi / 180.0 * self.theta0)
-                    * np.cos(self.pi / 180.0 * self.phi0)
-                )
-                ky0 = (
-                    self.k
-                    * np.sin(self.pi / 180.0 * self.theta0)
-                    * np.sin(self.pi / 180.0 * self.phi0)
-                )
-                sx0 = 2.0 * self.pi / self.dx * nsx / ndivs + kx0
-                sy0 = 2.0 * self.pi / self.dy * nsy / ndivs + ky0
-
-                # Calculate diffraction amplitudes (simplified)
-                Ax = self.simplified_ampS("X", mask2d, nsourceX, nsourceY)
-
-                # Process each source point
-                for is_src in range(SDIV[nsx, nsy]):
-                    if is_src >= len(l0s[nsx][nsy]):
-                        continue
-
-                    # Calculate wave vectors
-                    kx = sx0 + 2.0 * self.pi / self.dx * l0s[nsx][nsy][is_src]
-                    ky = sy0 + 2.0 * self.pi / self.dy * m0s[nsx][nsy][is_src]
-                    ls = l0s[nsx][nsy][is_src] + lsmaxX
-                    ms = m0s[nsx][nsy][is_src] + lsmaxY
-
-                    # Initialize field arrays
-                    fnx = np.zeros((self.XDIV, self.XDIV), dtype=complex)
-                    fny = np.zeros((self.XDIV, self.XDIV), dtype=complex)
-                    fnz = np.zeros((self.XDIV, self.XDIV), dtype=complex)
-
-                    # Calculate electric field components
-                    for n in range(ncut):
-                        kxn = kx + 2.0 * self.pi * linput[n] / self.dx
-                        kyn = ky + 2.0 * self.pi * minput[n] / self.dy
-
-                        if (self.MX**2 * kxn**2 + self.MY**2 * kyn**2) <= (
-                            self.NA * self.k
-                        ) ** 2:
-                            # Calculate field amplitude
-                            if (
-                                0 <= ls < nsourceX
-                                and 0 <= ms < nsourceY
-                                and n < Ax.shape[2]
-                            ):
-                                Ax_val = Ax[ls, ms, n]
-
-                                # Calculate phase
-                                phase = np.exp(
-                                    1j
-                                    * ((kxn + kx0) ** 2 + (kyn + ky0) ** 2)
-                                    / 2.0
-                                    / self.k
-                                    * self.z0
-                                    + 1j
-                                    * (self.MX**2 * kxn**2 + self.MY**2 * kyn**2)
-                                    / 2.0
-                                    / self.k
-                                    * self.z
-                                )
-
-                                # Calculate electric field components
-                                fx = Ax_val / np.sqrt(self.k**2 - kx**2) * phase
-                                fy = 0.0  # Simplified: only X polarization
-                                fz = 0.0  # Simplified: no Z component
-
-                                # Map to FFT grid
-                                ix = linput[n]
-                                iy = minput[n]
-                                px = (ix + self.XDIV) % self.XDIV
-                                py = (iy + self.XDIV) % self.XDIV
-
-                                fnx[px, py] = fx
-                                fny[px, py] = fy
-                                fnz[px, py] = fz
-
-                    # Inverse FFT to get spatial field distribution
-                    fnx_spatial = ifft2(fnx) * self.XDIV**2
-                    fny_spatial = ifft2(fny) * self.XDIV**2
-                    fnz_spatial = ifft2(fnz) * self.XDIV**2
-
-                    # Calculate intensity
-                    intensity = (
-                        np.abs(fnx_spatial) ** 2
-                        + np.abs(fny_spatial) ** 2
-                        + np.abs(fnz_spatial) ** 2
+                for n in range(ncut):
+                    kxn = (
+                        2.0 * const.pi / const.dx * nsx / const.ndivs
+                        + 2.0 * const.pi / const.dx * l0s[nsx][nsy][isd]
+                        + 2.0 * const.pi * linput[n] / const.dx
+                    )
+                    kyn = (
+                        2.0 * const.pi / const.dy * nsy / const.ndivs
+                        + 2.0 * const.pi / const.dy * m0s[nsx][nsy][isd]
+                        + 2.0 * const.pi * minput[n] / const.dy
                     )
 
-                    isum[nsx, nsy, :, :, is_src] = intensity
+                    if (const.MX**2 * kxn**2 + const.MY**2 * kyn**2) <= (
+                        const.NA * const.k
+                    ) ** 2:
+                        # Calculate phase
+                        phase = np.exp(
+                            1j
+                            * ((kxn + kx0) ** 2 + (kyn + ky0) ** 2)
+                            / 2.0
+                            / const.k
+                            * const.z0
+                            + 1j
+                            * (const.MX**2 * kxn**2 + const.MY**2 * kyn**2)
+                            / 2.0
+                            / const.k
+                            * const.z
+                        )
+                        # Calculate electric field components
+                        fx = Ex0m[isd, n] * phase
+                        fy = Ey0m[isd, n] * phase
+                        fz = Ez0m[isd, n] * phase
 
-        # Sum intensities from all source points
-        print("Summing intensities...")
-        final_intensity = np.zeros((self.XDIV, self.XDIV))
-        for i in range(self.XDIV):
-            for j in range(self.XDIV):
-                total_sum = 0.0
-                for nsx in range(ndivs):
-                    for nsy in range(ndivs):
-                        for is_src in range(SDIV[nsx, nsy]):
-                            total_sum += isum[nsx, nsy, i, j, is_src]
-                final_intensity[i, j] = total_sum / SDIVSUM
+                        # Map to FFT grid
+                        ix = linput[n]
+                        iy = minput[n]
+                        px = (ix + const.XDIV) % const.XDIV
+                        py = (iy + const.XDIV) % const.XDIV
 
-        # Save results
-        self.save_intensity_csv(final_intensity, output_file)
-        print(f"Intensity calculation completed. Results saved to {output_file}")
+                        fnx[px, py] = fx
+                        fny[px, py] = fy
+                        fnz[px, py] = fz
 
-    def save_intensity_csv(self, intensity: np.ndarray, filename: str) -> None:
-        """Save intensity data to CSV file in the same format as the original C++ code"""
-        with open(filename, "w") as f:
-            f.write("data,1\n")
-            f.write("memo1\n")
-            f.write("memo2\n")
+                # Inverse FFT to get spatial field distribution
+                fnx_ifft = np.fft.ifft2(fnx)
+                fny_ifft = np.fft.ifft2(fny)
+                fnz_ifft = np.fft.ifft2(fnz)
 
-            # Write X coordinates header
-            f.write(",")
-            for i in range(self.XDIV):
-                x = i * self.dx / self.XDIV / self.MX
-                f.write(f"{x}")
-                if i < self.XDIV - 1:
-                    f.write(",")
-            f.write("\n")
+                # Calculate intensity
+                intensity = (
+                    np.abs(fnx_ifft) ** 2
+                    + np.abs(fny_ifft) ** 2
+                    + np.abs(fnz_ifft) ** 2
+                )
 
-            # Write data rows
-            for j in range(self.XDIV):
-                y = j * self.dy / self.XDIV / self.MY
-                f.write(f"{y}")
-                for i in range(self.XDIV):
-                    f.write(f",{intensity[i, j]}")
-                f.write("\n")
+                isum[nsx, nsy, :, :, isd] = intensity
+
+    intensity_map = isum.sum(axis=(0, 1, 4)) / SDIVSUM
+    return intensity_map
 
 
 def main():
-    """Main function to run EUV intensity calculation"""
-    calculator = EUVIntensityCalculator()
-
-    # Set paths
-    mask_file = "mask.csv"
-    output_file = "emint.csv"
-
-    # Check if running from emint directory
-    if os.path.exists("../emint/mask.csv"):
-        mask_file = "../emint/mask.csv"
-        output_file = "../emint/emint.csv"
-    elif os.path.exists("emint/mask.csv"):
-        mask_file = "emint/mask.csv"
-        output_file = "emint/emint.csv"
-
-    # Run calculation
-    try:
-        calculator.calculate_intensity(mask_file, output_file)
-        print("EUV intensity calculation completed successfully!")
-    except Exception as e:
-        print(f"Error in calculation: {e}")
-        import traceback
-
-        traceback.print_exc()
+    pass
 
 
 if __name__ == "__main__":

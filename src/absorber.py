@@ -6,7 +6,7 @@ def absorber(
     polar: str,
     kxplus: np.ndarray,
     kyplus: np.ndarray,
-    kxy2: np.ndarray,
+    kxy2: float,
     eps: np.ndarray,
     eta: np.ndarray,
     zeta: np.ndarray,

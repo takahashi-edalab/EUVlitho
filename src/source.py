@@ -2,7 +2,7 @@ import numpy as np
 from src import const
 
 
-def source(ndivs: int) -> tuple[list, list, np.ndarray]:
+def source() -> tuple[list, list, np.ndarray]:
     """Calculate source distribution
 
     Args:
@@ -27,16 +27,16 @@ def source(ndivs: int) -> tuple[list, list, np.ndarray]:
     l0max = int(skangx / dkxang) + 1
     m0max = int(skangy / dkyang) + 1
 
-    l0s = [[[] for _ in range(ndivs)] for _ in range(ndivs)]
-    m0s = [[[] for _ in range(ndivs)] for _ in range(ndivs)]
-    SDIV = np.zeros((ndivs, ndivs), dtype=int)
+    l0s = [[[] for _ in range(const.ndivs)] for _ in range(const.ndivs)]
+    m0s = [[[] for _ in range(const.ndivs)] for _ in range(const.ndivs)]
+    SDIV = np.zeros((const.ndivs, const.ndivs), dtype=int)
 
-    for nsx in range(ndivs):
-        for nsy in range(ndivs):
+    for nsx in range(const.ndivs):
+        for nsy in range(const.ndivs):
             for l in range(-l0max, l0max + 1):
                 for m in range(-m0max, m0max + 1):
-                    skx = l * dkxang + 2.0 * const.pi / const.dx * nsx / ndivs
-                    sky = m * dkyang + 2.0 * const.pi / const.dy * nsy / ndivs
+                    skx = l * dkxang + 2.0 * const.pi / const.dx * nsx / const.ndivs
+                    sky = m * dkyang + 2.0 * const.pi / const.dy * nsy / const.ndivs
                     skxo = skx * const.MX
                     skyo = sky * const.MY
 

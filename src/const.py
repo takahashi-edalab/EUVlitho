@@ -6,10 +6,12 @@ i_complex = 1j  # 複素単位
 # Default parameters
 MX = 4  # X magnification
 MY = 4  # Y magnification
-NDIVX = 2048  # X pitch (nm)
-NDIVY = 2048  # Y pitch (nm)
+NDIVX = 512  # X pitch (nm)
+NDIVY = 512  # Y pitch (nm)
 dx = NDIVX
 dy = NDIVY
+XDIV = NDIVX // MX
+
 
 # Material properties
 nta = 0.9567 + 0.0343j  # absorber complex refractive index
@@ -62,12 +64,11 @@ delta = 1.0
 FDIVX = int(dx / delta + 0.000001)
 FDIVY = int(dy / delta + 0.000001)
 sigmadiv = 2.0  # division angle of the source (degree)
-delta = 1.0
-XDIV = 512  # XDIV=NDIVX/MX
-lsmaxX = NA * dx / MX / wavelength + 1
-lsmaxY = NA * dy / MY / wavelength + 1
-lpmaxX = NA * dx / MX * 2 / wavelength + 0.0001
-lpmaxY = NA * dy / MY * 2 / wavelength + 0.0001
+ndivs = max(1, int(180.0 / pi * wavelength / dx / sigmadiv))
+lsmaxX = int(NA * dx / MX / wavelength + 1)
+lsmaxY = int(NA * dy / MY / wavelength + 1)
+lpmaxX = int(NA * dx / MX * 2 / wavelength + 0.0001)
+lpmaxY = int(NA * dy / MY * 2 / wavelength + 0.0001)
 nsourceX = 2 * lsmaxX + 1
 nsourceY = 2 * lsmaxY + 1
 noutX = 2 * lpmaxX + 1
@@ -80,15 +81,15 @@ noutYL = 2 * lpmaxY + 10
 
 cutx = NA / MX * 6.0
 cuty = NA / MY * 6.0
-LMAX = cutx * dx / wavelength
-MMAX = cuty * dy / wavelength
+LMAX = int(cutx * dx / wavelength)
+MMAX = int(cuty * dy / wavelength)
 Lrange = 2 * LMAX + 1
 Mrange = 2 * MMAX + 1
 Lrange2 = 4 * LMAX + 1
 Mrange2 = 4 * MMAX + 1
 
 
-def diffraction_order_limits(LMAX, MMAX):
+def diffraction_order_limits(LMAX: int, MMAX: int) -> tuple[np.ndarray, np.ndarray]:
     """Calculate diffraction order limits efficiently using NumPy vectorization"""
     # create 1D index arrays
     lvals = np.arange(-LMAX, LMAX + 1)
@@ -105,9 +106,10 @@ def diffraction_order_limits(LMAX, MMAX):
 
 lindex, mindex = diffraction_order_limits(LMAX, MMAX)
 Nrange = len(lindex)
+Nrange2 = Nrange * 2
 
-cexpX = np.exp(-2j * np.pi * np.arange(FDIVX + 1) / FDIVX)
-cexpY = np.exp(-2j * np.pi * np.arange(FDIVY + 1) / FDIVY)
+cexpX = np.exp(-2j * np.pi * np.arange(FDIVX) / FDIVX)
+cexpY = np.exp(-2j * np.pi * np.arange(FDIVY) / FDIVY)
 
 eabs = np.zeros(100, dtype=complex)  # 各層の複素誘電率
 eabs[0] = nta**2  # 吸収体
