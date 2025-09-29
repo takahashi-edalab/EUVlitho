@@ -28,18 +28,18 @@ theta0 = -6.0  # chief ray angle (degree)
 azimuth = 0.0  # azimuthal angle (degree)
 phi0 = 90.0 - azimuth
 NA = 0.33
-type = 2  # 0: circular, 1: annular, 2: dipole
+optical_type = 2  # 0: circular, 1: annular, 2: dipole
 sigma1 = 0.9  # outer sigma
 sigma2 = 0.55  # inner sigma
 openangle = 90.0  # opening angle for dipole illumination
 
 # complex refractive index
-n_mo = 0.9238 + 0.006435j  # Mo層
-n_si = 0.999 + 0.001826j  # Si層
-n_ru = 0.8863 + 0.01706j  # Ru層
-n_mo_si2 = 0.9693 + 0.004333j  # Mo/Si2複合層
-n_ru_si = 0.9099 + 0.01547j  # Ru/Si複合層
-n_si_o2 = 0.978 + 0.01083j  # SiO2層
+n_mo = 0.9238 + 0.006435j  # Mo layer
+n_si = 0.999 + 0.001826j  # Si layer
+n_ru = 0.8863 + 0.01706j  # Ru layer
+n_mo_si2 = 0.9693 + 0.004333j  # Mo/Si2 mixing layer
+n_ru_si = 0.9099 + 0.01547j  # Ru/Si mixing layer
+n_si_o2 = 0.978 + 0.01083j  # SiO2 layer
 
 # thickness [nm]
 thickness_mo = 2.052

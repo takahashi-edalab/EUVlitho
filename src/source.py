@@ -3,23 +3,6 @@ from src import const
 
 
 def source() -> tuple[list, list, np.ndarray]:
-    """Calculate source distribution
-
-    Args:
-        NA: Numerical aperture
-        type: Source type (0: circular, 1: annular, 2: dipole)
-        sigma1: Outer sigma
-        sigma2: Inner sigma
-        openangle: Opening angle for dipole
-        k: Wave number
-        dx, dy: Pitch
-        ndivs: Number of divisions
-        MX, MY: Magnification
-
-    Returns:
-        l0s, m0s: Source coordinates
-        SDIV: Source division array
-    """
     dkxang = 2.0 * const.pi / const.dx
     dkyang = 2.0 * const.pi / const.dy
     skangx = const.k * const.NA / const.MX * const.sigma1
@@ -41,18 +24,18 @@ def source() -> tuple[list, list, np.ndarray]:
                     skyo = sky * const.MY
 
                     condition = False
-                    if type == 0:  # circular
+                    if const.optical_type == 0:  # circular
                         condition = (skxo**2 + skyo**2) <= (
                             const.k * const.NA * const.sigma1
                         ) ** 2
-                    elif type == 1:  # annular
+                    elif const.optical_type == 1:  # annular
                         r = np.sqrt(skxo**2 + skyo**2)
                         condition = (
                             const.k * const.NA * const.sigma2
                             <= r
                             <= const.k * const.NA * const.sigma1
                         )
-                    elif type == 2:  # dipole
+                    elif const.optical_type == 2:  # dipole
                         r = np.sqrt(skxo**2 + skyo**2)
                         angle_condition = abs(skyo) <= abs(skxo) * np.tan(
                             const.pi * const.openangle / 180.0 / 2.0

@@ -2,14 +2,7 @@ import numpy as np
 from src import const
 from src.diffraction_amplitude import diffraction_amplitude
 from src.source import source
-
-
-# def exponential(FDIV: int) -> np.ndarray:
-#     """Calculate exponential terms for Fourier transform"""
-#     cexp = np.zeros(FDIV + 1, dtype=complex)
-#     for i in range(FDIV + 1):
-#         cexp[i] = np.exp(-2j * np.pi * i / FDIV)
-#     return cexp
+from src.electro_field import electro_field
 
 
 def find_valid_output_points() -> tuple[np.ndarray, np.ndarray]:
@@ -55,36 +48,23 @@ def na_filter_amplitude_map(Ax: np.ndarray) -> np.ndarray:
         -1000 + 0j,
         dtype=np.complex128,
     )
-    is_idx = np.arange(const.nsourceXL)[:, None]  # shape (nsourceXL, 1)
-    js_idx = np.arange(const.nsourceYL)[None, :]  # shape (1, nsourceYL)
 
-    condition = (
-        ((is_idx - const.lsmaxX) * const.MX / const.dx) ** 2
-        + ((js_idx - const.lsmaxY) * const.MY / const.dy) ** 2
-    ) <= (const.NA / const.wavelength) ** 2
+    for is_ in range(const.nsourceXL):
+        for js_ in range(const.nsourceYL):
+            # 開口条件の判定
+            cond = (
+                ((is_ - const.lsmaxX) * const.MX / const.dx) ** 2
+                + ((js_ - const.lsmaxY) * const.MY / const.dy) ** 2
+            ) <= (const.NA / const.wavelength) ** 2
 
-    mask3d = condition[:, :, None]
+            if cond:
+                for n in range(const.Nrange):
+                    ip = const.lindex[n] - (is_ - const.lsmaxX) + const.lpmaxX
+                    jp = const.mindex[n] - (js_ - const.lsmaxY) + const.lpmaxY
 
-    ip_all = (
-        const.lindex[None, None, :]
-        - (is_idx - const.lsmaxX)[:, None, None]
-        + const.lpmaxX
-    )  # shape (nsourceXL, 1, Nrange)
-    jp_all = (
-        const.mindex[None, None, :]
-        - (js_idx - const.lsmaxY)[None, :, None]
-        + const.lpmaxY
-    )  # shape (1, nsourceYL, Nrange)
+                    if 0 <= ip < const.noutXL and 0 <= jp < const.noutYL:
+                        ampxx[is_, js_, ip, jp] = Ax[is_, js_, n]
 
-    valid_ip = (0 <= ip_all) & (ip_all < const.noutXL)
-    valid_jp = (0 <= jp_all) & (jp_all < const.noutYL)
-    valid_mask = mask3d & valid_ip & valid_jp
-    # Get indices where the mask is True
-    I, J, N = np.nonzero(valid_mask)
-    ip_valid = ip_all[I, J, N]
-    jp_valid = jp_all[I, J, N]
-
-    ampxx[I, J, ip_valid, jp_valid] = Ax[I, J, N]
     return ampxx
 
 
@@ -114,51 +94,9 @@ def intensity(mask2d: np.ndarray) -> np.ndarray:
 
             Ax = diffraction_amplitude("X", mask2d, sx0, sy0)
             ampxx = na_filter_amplitude_map(Ax)
-
-            # ---- Ex0m / Ey0m / Ez0m ----
-            Ex0m = np.zeros((SDIV[nsx, nsy], ncut), dtype=complex)
-            Ey0m = np.zeros_like(Ex0m)
-            Ez0m = np.zeros_like(Ex0m)
-
-            for isd in range(SDIV[nsx, nsy]):
-                kx = sx0 + 2.0 * const.pi / const.dx * l0s[nsx][nsy][isd]
-                ky = sy0 + 2.0 * const.pi / const.dy * m0s[nsx][nsy][isd]
-                ls = l0s[nsx][nsy][isd] + const.lsmaxX
-                ms = m0s[nsx][nsy][isd] + const.lsmaxY
-                for i in range(ncut):
-                    kxplus = kx + 2 * const.pi * linput[i] / const.dx
-                    kyplus = ky + 2 * const.pi * minput[i] / const.dy
-                    kxy2 = kxplus**2 + kyplus**2
-                    klm = np.sqrt(const.k * const.k - kxy2)
-                    ip = linput[i] + const.lpmaxX
-                    jp = minput[i] + const.lpmaxY
-
-                    Ax_val = ampxx[ls, ms, ip, jp] / np.sqrt(
-                        const.k * const.k - kx * kx
-                    )
-                    Ay_val = 0
-
-                    EAx = (
-                        const.i_complex * const.k * Ax_val
-                        - const.i_complex
-                        / const.k
-                        * (kxplus**2 * Ax_val + kxplus * kyplus * Ay_val)
-                    )
-                    EAy = (
-                        const.i_complex * const.k * Ay_val
-                        - const.i_complex
-                        / const.k
-                        * (kxplus * kyplus * Ax_val + kyplus**2 * Ay_val)
-                    )
-                    EAz = (
-                        const.i_complex
-                        * klm
-                        / const.k
-                        * (kxplus * Ax_val + kyplus * Ay_val)
-                    )
-                    Ex0m[isd, i] = EAx
-                    Ey0m[isd, i] = EAy
-                    Ez0m[isd, i] = EAz
+            Ex0m, Ey0m, Ez0m = electro_field(
+                SDIV, nsx, nsy, ncut, sx0, sy0, linput, minput, ampxx
+            )
 
             # ---- FFT & isum更新 ----
             for isd in range(SDIV[nsx, nsy]):

@@ -71,9 +71,12 @@ class LinePattern(MaskPattern):
             sum_val += self.cd
 
         for i in range(sum_val, mask_w):
-            if space == 1:
+            if space == 0:
                 for j in range(mask_h):
-                    mask2d[i, j] = mask1dy[j]
+                    mask2d[j, i] = 1
+            else:
+                for j in range(mask_h):
+                    mask2d[j, i] = mask1dy[j]
 
         return mask2d
 

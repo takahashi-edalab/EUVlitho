@@ -9,7 +9,7 @@ def diffraction_amplitude(
     # --- 1. calc fourier coefficients for each layer ---
     epsN, etaN, zetaN, sigmaN = fourier.coefficients(mask2d)
 
-    # --- 2. kxplus, kyplus, kxy2, klm の計算 ---
+    # --- 2. kxplus, kyplus, kxy2, klm
     kxplus = kx0 + 2 * const.pi * np.array(const.lindex) / const.dx
     kyplus = ky0 + 2 * const.pi * np.array(const.mindex) / const.dy
     kxy2 = kxplus**2 + kyplus**2
@@ -67,9 +67,6 @@ def diffraction_amplitude(
     U0 = np.matmul(T0L, U1U) + np.matmul(T0R, U1B)
     U0I = np.linalg.inv(U0)
     U1U = np.matmul(U1U - U1B, U0I)
-
-    # br1_array = br1_array.T
-    # al1_br1 = br1_array * al1[np.newaxis, :]
     FG = al_br / klm[:, np.newaxis]
     FG = np.matmul(FG, U1U)
 
