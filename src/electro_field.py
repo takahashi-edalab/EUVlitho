@@ -3,9 +3,9 @@ from src import const
 
 
 def electro_field(
+    SDIV: np.ndarray,
     l0s: np.ndarray,
     m0s: np.ndarray,
-    SDIV: np.ndarray,
     nsx: int,
     nsy: int,
     ncut: int,

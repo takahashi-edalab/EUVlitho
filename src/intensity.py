@@ -95,7 +95,7 @@ def intensity(mask2d: np.ndarray) -> np.ndarray:
             Ax = diffraction_amplitude("X", mask2d, sx0, sy0)
             ampxx = na_filter_amplitude_map(Ax)
             Ex0m, Ey0m, Ez0m = electro_field(
-                SDIV, nsx, nsy, ncut, sx0, sy0, linput, minput, ampxx
+                SDIV, l0s, m0s, nsx, nsy, ncut, sx0, sy0, linput, minput, ampxx
             )
 
             # ---- FFT & isum更新 ----
