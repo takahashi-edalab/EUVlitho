@@ -51,7 +51,6 @@ def na_filter_amplitude_map(Ax: np.ndarray) -> np.ndarray:
 
     for is_ in range(const.nsourceXL):
         for js_ in range(const.nsourceYL):
-            # 開口条件の判定
             cond = (
                 ((is_ - const.lsmaxX) * const.MX / const.dx) ** 2
                 + ((js_ - const.lsmaxY) * const.MY / const.dy) ** 2
