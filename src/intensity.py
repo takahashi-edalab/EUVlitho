@@ -86,10 +86,6 @@ def intensity(mask2d: np.ndarray) -> np.ndarray:
             Ex0m, Ey0m, Ez0m = electro_field(
                 SDIV, l0s, m0s, nsx, nsy, ncut, sx0, sy0, linput, minput, ampxx
             )
-            # np.save("Ex0m.npy", Ex0m)
-            # np.save("Ey0m.npy", Ey0m)
-            # np.save("Ez0m.npy", Ez0m)
-            # exit()
 
             # ---- FFT & isum更新 ----
             for isd in range(SDIV[nsx, nsy]):
