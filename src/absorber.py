@@ -29,9 +29,8 @@ def absorber(
     # eigenvalues and eigenvectors
     w, br1 = np.linalg.eig(D)
     al1 = np.sqrt(w)
-    # calc Cjp
-    Cjp = np.linalg.inv(br1) @ br2
-
+    Cjp = np.linalg.inv(br1)
+    Cjp = Cjp @ br2
     new_sigma = np.zeros((const.Nrange, const.Nrange), dtype=complex)
     for i in range(const.Nrange):
         l = const.lindex[i]
@@ -51,15 +50,13 @@ def absorber(
         * new_sigma
         @ br1
     )
-    # Cj の計算
-    Cj = np.linalg.inv(B1) @ B2
-
-    # T1 行列と U1U, U1B の計算
+    inv_B1 = np.linalg.inv(B1)
+    Cj = inv_B1 @ B2
     gamma = np.exp(const.i_complex * al1 * dabs)
-    T1UL = 0.5 * (Cj + np.outer(al2, 1 / al1) * Cjp) / gamma[:, None]
-    T1UR = 0.5 * (Cj - np.outer(al2, 1 / al1) * Cjp) / gamma[:, None]
-    T1BL = 0.5 * (Cj - np.outer(al2, 1 / al1) * Cjp) * gamma[:, None]
-    T1BR = 0.5 * (Cj + np.outer(al2, 1 / al1) * Cjp) * gamma[:, None]
+    T1UL = 0.5 * (Cj + np.outer(1 / al1, al2) * Cjp) / gamma[:, None]
+    T1UR = 0.5 * (Cj - np.outer(1 / al1, al2) * Cjp) / gamma[:, None]
+    T1BL = 0.5 * (Cj - np.outer(1 / al1, al2) * Cjp) * gamma[:, None]
+    T1BR = 0.5 * (Cj + np.outer(1 / al1, al2) * Cjp) * gamma[:, None]
 
     U1U = T1UL @ U2U + T1UR @ U2B
     U1B = T1BL @ U2U + T1BR @ U2B

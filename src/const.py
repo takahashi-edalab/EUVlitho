@@ -6,11 +6,31 @@ i_complex = 1j  # 複素単位
 # Default parameters
 MX = 4  # X magnification
 MY = 4  # Y magnification
-NDIVX = 512  # X pitch (nm)
-NDIVY = 512  # Y pitch (nm)
+NDIVX = 2048  # X pitch (nm)
+NDIVY = 2048  # Y pitch (nm)
 dx = NDIVX
 dy = NDIVY
 XDIV = NDIVX // MX
+YDIV = NDIVY // MY
+
+
+# Optical parameters
+wavelength = 13.5  # wavelength (nm)
+k = 2.0 * pi / wavelength
+theta0 = -6.0  # chief ray angle (degree)
+azimuth = 0.0  # azimuthal angle (degree)
+phi0 = 90.0 - azimuth
+NA = 0.33
+kx0 = k * np.sin(np.deg2rad(theta0)) * np.cos(np.deg2rad(phi0))
+ky0 = k * np.sin(np.deg2rad(theta0)) * np.sin(np.deg2rad(phi0))
+
+
+# optical type
+mesh = 0.1
+optical_type = 2  # 0: circular, 1: annular, 2: dipole
+sigma1 = 0.9  # outer sigma
+sigma2 = 0.55  # inner sigma
+openangle = 90.0  # opening angle for dipole illumination
 
 
 # Material properties
@@ -20,18 +40,6 @@ NABS = 1  # number of the absorber layers
 dabst = 60.0  # total absorber thickness (nm)
 z = 0.0  # defocus
 z0 = dabst + 42.0  # reflection point inside ML from the top of the absorber
-
-# Optical parameters
-wavelength = 13.5  # wavelength (nm)
-k = 2.0 * pi / wavelength
-theta0 = -6.0  # chief ray angle (degree)
-azimuth = 0.0  # azimuthal angle (degree)
-phi0 = 90.0 - azimuth
-NA = 0.33
-optical_type = 2  # 0: circular, 1: annular, 2: dipole
-sigma1 = 0.9  # outer sigma
-sigma2 = 0.55  # inner sigma
-openangle = 90.0  # opening angle for dipole illumination
 
 # complex refractive index
 n_mo = 0.9238 + 0.006435j  # Mo layer
@@ -79,6 +87,8 @@ nsourceYL = 2 * lsmaxY + 10
 noutXL = 2 * lpmaxX + 10
 noutYL = 2 * lpmaxY + 10
 
+
+# TODO: constじゃないっぽい -> linear lithoは
 cutx = NA / MX * 6.0
 cuty = NA / MY * 6.0
 LMAX = int(cutx * dx / wavelength)
@@ -108,8 +118,8 @@ lindex, mindex = diffraction_order_limits(LMAX, MMAX)
 Nrange = len(lindex)
 Nrange2 = Nrange * 2
 
-cexpX = np.exp(-2j * np.pi * np.arange(FDIVX) / FDIVX)
-cexpY = np.exp(-2j * np.pi * np.arange(FDIVY) / FDIVY)
+cexpX = np.exp(-2j * np.pi * np.arange(FDIVX + 1) / FDIVX)
+cexpY = np.exp(-2j * np.pi * np.arange(FDIVY + 1) / FDIVY)
 
 eabs = np.zeros(100, dtype=complex)  # 各層の複素誘電率
 eabs[0] = nta**2  # 吸収体

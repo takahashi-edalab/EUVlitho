@@ -1,14 +1,15 @@
 import numpy as np
 from src import const
 from src.diffraction_amplitude import diffraction_amplitude
-from src.source import source
+from src.source import abbe_source
 from src.electro_field import electro_field
 
 
-def find_valid_output_points() -> tuple[np.ndarray, np.ndarray]:
+def find_valid_output_points(nrange: int) -> tuple[np.ndarray, np.ndarray, int]:
     """Find valid output points based on source and pupil conditions"""
-    linput = []
-    minput = []
+    linput = np.zeros(nrange, dtype=int)
+    minput = np.zeros(nrange, dtype=int)
+    ninput = 0
     for ip in range(const.noutX):
         for jp in range(const.noutY):
             snum = 0
@@ -34,12 +35,11 @@ def find_valid_output_points() -> tuple[np.ndarray, np.ndarray]:
                         snum += 1
 
             if snum > 0:
-                linput.append(ip - const.lpmaxX)
-                minput.append(jp - const.lpmaxY)
+                linput[ninput] = ip - const.lpmaxX
+                minput[ninput] = jp - const.lpmaxY
+                ninput += 1
 
-    linput = np.array(linput)
-    minput = np.array(minput)
-    return linput, minput
+    return linput, minput, ninput
 
 
 def na_filter_amplitude_map(Ax: np.ndarray) -> np.ndarray:
@@ -49,53 +49,47 @@ def na_filter_amplitude_map(Ax: np.ndarray) -> np.ndarray:
         dtype=np.complex128,
     )
 
-    for is_ in range(const.nsourceXL):
-        for js_ in range(const.nsourceYL):
+    for x in range(const.nsourceXL):
+        for y in range(const.nsourceYL):
             cond = (
-                ((is_ - const.lsmaxX) * const.MX / const.dx) ** 2
-                + ((js_ - const.lsmaxY) * const.MY / const.dy) ** 2
+                ((x - const.lsmaxX) * const.MX / const.dx) ** 2
+                + ((y - const.lsmaxY) * const.MY / const.dy) ** 2
             ) <= (const.NA / const.wavelength) ** 2
 
             if cond:
                 for n in range(const.Nrange):
-                    ip = const.lindex[n] - (is_ - const.lsmaxX) + const.lpmaxX
-                    jp = const.mindex[n] - (js_ - const.lsmaxY) + const.lpmaxY
+                    ip = const.lindex[n] - (x - const.lsmaxX) + const.lpmaxX
+                    jp = const.mindex[n] - (y - const.lsmaxY) + const.lpmaxY
 
                     if 0 <= ip < const.noutXL and 0 <= jp < const.noutYL:
-                        ampxx[is_, js_, ip, jp] = Ax[is_, js_, n]
+                        ampxx[x, y, ip, jp] = Ax[x, y, n]
 
     return ampxx
 
 
 def intensity(mask2d: np.ndarray) -> np.ndarray:
-    l0s, m0s, SDIV = source()
+    l0s, m0s, SDIV = abbe_source()
     SDIVMAX = np.max(SDIV)
     SDIVSUM = np.sum(SDIV)
 
-    linput, minput = find_valid_output_points()
-    ncut = len(linput)
+    linput, minput, ninput = find_valid_output_points(const.Nrange)
+    ncut = ninput
 
     isum = np.zeros((const.ndivs, const.ndivs, const.XDIV, const.XDIV, SDIVMAX))
     for nsx in range(const.ndivs):
         for nsy in range(const.ndivs):
-            kx0 = (
-                const.k
-                * np.sin(np.deg2rad(const.theta0))
-                * np.cos(np.deg2rad(const.phi0))
-            )
-            ky0 = (
-                const.k
-                * np.sin(np.deg2rad(const.theta0))
-                * np.sin(np.deg2rad(const.phi0))
-            )
-            sx0 = 2.0 * const.pi / const.dx * nsx / const.ndivs + kx0
-            sy0 = 2.0 * const.pi / const.dy * nsy / const.ndivs + ky0
-
+            sx0 = 2.0 * const.pi / const.dx * nsx / const.ndivs + const.kx0
+            sy0 = 2.0 * const.pi / const.dy * nsy / const.ndivs + const.ky0
             Ax = diffraction_amplitude("X", mask2d, sx0, sy0)
+            # ここまでdebug中...
             ampxx = na_filter_amplitude_map(Ax)
             Ex0m, Ey0m, Ez0m = electro_field(
                 SDIV, l0s, m0s, nsx, nsy, ncut, sx0, sy0, linput, minput, ampxx
             )
+            # np.save("Ex0m.npy", Ex0m)
+            # np.save("Ey0m.npy", Ey0m)
+            # np.save("Ez0m.npy", Ez0m)
+            # exit()
 
             # ---- FFT & isum更新 ----
             for isd in range(SDIV[nsx, nsy]):
@@ -121,7 +115,7 @@ def intensity(mask2d: np.ndarray) -> np.ndarray:
                         # Calculate phase
                         phase = np.exp(
                             1j
-                            * ((kxn + kx0) ** 2 + (kyn + ky0) ** 2)
+                            * ((kxn + const.kx0) ** 2 + (kyn + const.ky0) ** 2)
                             / 2.0
                             / const.k
                             * const.z0
@@ -140,7 +134,7 @@ def intensity(mask2d: np.ndarray) -> np.ndarray:
                         ix = linput[n]
                         iy = minput[n]
                         px = (ix + const.XDIV) % const.XDIV
-                        py = (iy + const.XDIV) % const.XDIV
+                        py = (iy + const.YDIV) % const.YDIV
 
                         fnx[px, py] = fx
                         fny[px, py] = fy

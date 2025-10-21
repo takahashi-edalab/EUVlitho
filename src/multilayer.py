@@ -13,11 +13,11 @@ def transfer_matrix(
     matrix_size: int,
     kxplus: np.ndarray,
     kyplus: np.ndarray,
-    current_alpha: float,
-    current_epsilon: float,
+    current_alpha: np.ndarray,
+    current_epsilon: complex,
     current_thickness: float,
-    next_alpha: float,
-    next_epsilon: float,
+    next_alpha: np.ndarray,
+    next_epsilon: complex,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     # identity diag Triplet (Cjp) -> all ones
     k = const.k
@@ -26,11 +26,12 @@ def transfer_matrix(
     # Build Cj depending on polarization (diagonal entries)
     if polar == "X":
         Cj_vals = (k - (kxplus**2) / k / next_epsilon) / (
-            k - (kxplus**2) / (k * current_epsilon)
+            k - (kxplus**2) / k / current_epsilon
         )
+
     else:  # 'Y'
         Cj_vals = (k - (kyplus**2) / k / next_epsilon) / (
-            k - (kyplus**2) / (k * current_epsilon)
+            k - (kyplus**2) / k / current_epsilon
         )
 
     gamma = np.exp(const.i_complex * current_alpha * current_thickness)

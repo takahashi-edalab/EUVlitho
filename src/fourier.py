@@ -2,11 +2,16 @@ import numpy as np
 from src import const
 
 
-def fourier(FDIV, ll, f, cexp):
+def fourier(l, f, cexp, FDIV):
     sum = 0.0 + 0.0j
     for i in range(FDIV):
-        il = (i * ll) % FDIV
-        sum += f[i] * cexp[il]
+        j = 0
+        if l >= 0:
+            j = (i * l) % FDIV
+        else:
+            j = FDIV - ((-i * l) % FDIV)
+
+        sum += f[i] * cexp[j]
     return sum / FDIV
 
 
@@ -36,6 +41,10 @@ def mask(pattern_mask: np.ndarray, ampta: complex, ampvc: complex) -> np.ndarray
     # print(const.Mrange2)  # 73
     for i in range(const.FDIVX):
         ampy = pattern[i, :]
+        for j in range(const.Mrange2):
+            m = j - 2 * const.MMAX
+            ftmp[i, j] = fourier(m, ampy, const.cexpY, const.FDIVY)
+
         # shift = int((const.Mrange2 + 1) / 2)
         # shifted_ampy = np.roll(ampy, shift)
         # fft_result = np.fft.fft(
@@ -44,21 +53,26 @@ def mask(pattern_mask: np.ndarray, ampta: complex, ampvc: complex) -> np.ndarray
         # ftmp[i, : const.Mrange2 // 2] = fft_result[: const.Mrange2 // 2]
         # ftmp[i, -(const.Mrange2 // 2 + 1) :] = fft_result[const.Mrange2 // 2 :]
 
-        for ij in range(int((const.Mrange2 + 1) / 2)):
-            ftmp[i, ij] = fourier(const.FDIVY, ij, ampy, const.cexpY)
-        for ij in range(int((const.Mrange2 + 1) / 2), const.Mrange2):
-            m = ij - const.Mrange2
-            ftmp[i, ij] = fourier(const.FDIVY, m, ampy, const.cexpY)
+        # for ij in range(int((const.Mrange2 + 1) / 2)):
+        #     ftmp[i, ij] = fourier(const.FDIVY, ij, ampy, const.cexpY)
+        # for ij in range(int((const.Mrange2 + 1) / 2), const.Mrange2):
+        #     m = ij - const.Mrange2
+        #     ftmp[i, ij] = fourier(const.FDIVY, m, ampy, const.cexpY)
 
     # x-axis second Fourier transform
     famp = np.zeros((const.Lrange2, const.Mrange2), dtype=np.complex128)
     for j in range(const.Mrange2):
         ampx = ftmp[:, j]
-        for i in range(int((const.Lrange2 + 1) / 2)):
-            famp[i, j] = fourier(const.FDIVX, i, ampx, const.cexpX)
-        for i in range(int((const.Lrange2 + 1) / 2), const.Lrange2):
-            ll = i - const.Lrange2
-            famp[i, j] = fourier(const.FDIVX, ll, ampx, const.cexpX)
+
+        for i in range(const.Lrange2):
+            l = i - 2 * const.LMAX
+            famp[i, j] = fourier(l, ampx, const.cexpX, const.FDIVX)
+
+        # for i in range(int((const.Lrange2 + 1) / 2)):
+        #     famp[i, j] = fourier(const.FDIVX, i, ampx, const.cexpX)
+        # for i in range(int((const.Lrange2 + 1) / 2), const.Lrange2):
+        #     ll = i - const.Lrange2
+        #     famp[i, j] = fourier(const.FDIVX, ll, ampx, const.cexpX)
 
     # --- y-axis first Fourier transform ---
     # ftmp = np.fft.fftshift(pattern, axes=0)
