@@ -80,8 +80,9 @@ def intensity(mask2d: np.ndarray) -> np.ndarray:
         for nsy in range(const.ndivs):
             sx0 = 2.0 * const.pi / const.dx * nsx / const.ndivs + const.kx0
             sy0 = 2.0 * const.pi / const.dy * nsy / const.ndivs + const.ky0
+            # print(type(sx0), type(sy0)) # numpy.float64
+            # exit()
             Ax = diffraction_amplitude("X", mask2d, sx0, sy0)
-            # ここまでdebug中...
             ampxx = na_filter_amplitude_map(Ax)
             Ex0m, Ey0m, Ez0m = electro_field(
                 SDIV, l0s, m0s, nsx, nsy, ncut, sx0, sy0, linput, minput, ampxx
@@ -155,7 +156,11 @@ def intensity(mask2d: np.ndarray) -> np.ndarray:
 
 
 def main():
-    i = intensity(np.ones((const.NDIVX, const.NDIVY)))
+    from elitho import use_backend, get_backend
+
+    use_backend("cupy")
+    xp = get_backend()
+    i = intensity(xp.ones((const.NDIVX, const.NDIVY)))
 
 
 if __name__ == "__main__":

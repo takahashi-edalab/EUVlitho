@@ -1,18 +1,19 @@
-import numpy as np
+import cupy as cp
 from elitho import const
 
 
-def mask(pattern_mask: np.ndarray, ampta: complex, ampvc: complex) -> np.ndarray:
+def mask(pattern_mask: "xp.ndarray", ampta: complex, ampvc: complex) -> "xp.ndarray":
+    xp = cp.get_array_module(pattern_mask)
     meshX = const.FDIVX // const.NDIVX
     meshY = const.FDIVY // const.NDIVY
 
-    pattern = np.where(
-        np.kron(pattern_mask, np.ones((meshX, meshY))), ampta, ampvc
+    pattern = xp.where(
+        xp.kron(pattern_mask, xp.ones((meshX, meshY))), ampta, ampvc
     ).astype(
-        np.complex128
+        xp.complex128
     )  # shape: (FDIVX, FDIVY)
 
-    famp_full = np.fft.fftshift(np.fft.fft2(pattern)) / (const.FDIVX * const.FDIVY)
+    famp_full = xp.fft.fftshift(xp.fft.fft2(pattern)) / (const.FDIVX * const.FDIVY)
 
     # Extract the region around the frequency center
     cx = const.FDIVX // 2
@@ -27,11 +28,14 @@ def mask(pattern_mask: np.ndarray, ampta: complex, ampvc: complex) -> np.ndarray
     return famp
 
 
-def coefficients(pattern_mask: np.ndarray):
-    epses = []
-    etas = []
-    zetas = []
-    sigmas = []
+def coefficients(
+    pattern_mask: "xp.ndarray",
+) -> tuple["xp.ndarray", "xp.ndarray", "xp.ndarray", "xp.ndarray"]:
+    xp = cp.get_array_module(pattern_mask)
+    epses = cp.zeros((const.NABS, const.Lrange2, const.Mrange2), dtype=xp.complex128)
+    etas = cp.zeros_like(epses)
+    zetas = cp.zeros_like(epses)
+    sigmas = cp.zeros_like(epses)
     for n in range(const.NABS):
         # eps
         eps = mask(
@@ -48,12 +52,12 @@ def coefficients(pattern_mask: np.ndarray):
         # leps
         leps = mask(
             pattern_mask=pattern_mask,
-            ampta=np.log(const.eabs[n]),
+            ampta=xp.log(const.eabs[n]),
             ampvc=0.0,
         )
 
-        i_idx = np.arange(const.Lrange2) - 2 * const.LMAX
-        j_idx = np.arange(const.Mrange2) - 2 * const.MMAX
+        i_idx = xp.arange(const.Lrange2) - 2 * const.LMAX
+        j_idx = xp.arange(const.Mrange2) - 2 * const.MMAX
 
         zetal = const.i_complex * 2 * const.pi * i_idx[:, None] / const.dx
         zetam = const.i_complex * 2 * const.pi * j_idx[None, :] / const.dy
@@ -61,8 +65,8 @@ def coefficients(pattern_mask: np.ndarray):
         eta = zetal * leps
         zeta = zetam * leps
 
-        epses.append(eps)
-        sigmas.append(sigma)
-        etas.append(eta)
-        zetas.append(zeta)
+        epses[n] = eps
+        sigmas[n] = sigma
+        etas[n] = eta
+        zetas[n] = zeta
     return epses, etas, zetas, sigmas
