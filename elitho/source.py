@@ -1,5 +1,5 @@
 import numpy as np
-from src import const
+from elitho import const
 
 
 def abbe_source() -> tuple[list, list, np.ndarray]:

@@ -118,8 +118,6 @@ lindex, mindex = diffraction_order_limits(LMAX, MMAX)
 Nrange = len(lindex)
 Nrange2 = Nrange * 2
 
-cexpX = np.exp(-2j * np.pi * np.arange(FDIVX + 1) / FDIVX)
-cexpY = np.exp(-2j * np.pi * np.arange(FDIVY + 1) / FDIVY)
 
 eabs = np.zeros(100, dtype=complex)  # 各層の複素誘電率
 eabs[0] = nta**2  # 吸収体
@@ -128,3 +126,7 @@ dabst = 60.0  # total absorber thickness (nm)
 dabs[0] = dabst
 z = 0.0  # defocus
 z0 = dabst + 42.0  # reflection point inside ML from the top of the absorber
+
+# TODO: delete this
+cexpX = np.exp(-2j * np.pi * np.arange(FDIVX + 1) / FDIVX)
+cexpY = np.exp(-2j * np.pi * np.arange(FDIVY + 1) / FDIVY)

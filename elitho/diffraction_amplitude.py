@@ -1,6 +1,6 @@
 import numpy as np
-from src import const, fourier, multilayer
-from src.absorber import absorber
+from elitho import const, fourier, multilayer
+from elitho.absorber import absorber
 
 
 def diffraction_amplitude(
@@ -62,8 +62,10 @@ def diffraction_amplitude(
     T0L = klm_B + al_B
     T0R = klm_B - al_B
     U0 = np.matmul(T0L, U1U) + np.matmul(T0R, U1B)
+    # TODO: fix me ---
     U0_inv = np.linalg.inv(U0)
     new_U1U = np.matmul(U1U - U1B, U0_inv)
+    # ----
     FG = al_B / klm[:, np.newaxis]
     FG = np.matmul(FG, new_U1U)
     #

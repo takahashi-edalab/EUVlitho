@@ -1,8 +1,8 @@
 import numpy as np
-from src import const
-from src.diffraction_amplitude import diffraction_amplitude
-from src.source import abbe_source
-from src.electro_field import electro_field
+from elitho import const
+from elitho.diffraction_amplitude import diffraction_amplitude
+from elitho.source import abbe_source
+from elitho.electro_field import electro_field
 
 
 def find_valid_output_points(nrange: int) -> tuple[np.ndarray, np.ndarray, int]:
@@ -155,7 +155,7 @@ def intensity(mask2d: np.ndarray) -> np.ndarray:
 
 
 def main():
-    pass
+    i = intensity(np.ones((const.NDIVX, const.NDIVY)))
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 import numpy as np
-from src import const
+from elitho import const
 
 
 def mask(pattern_mask: np.ndarray, ampta: complex, ampvc: complex) -> np.ndarray:

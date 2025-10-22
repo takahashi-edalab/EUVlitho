@@ -1,5 +1,22 @@
 import numpy as np
-from src import const
+from elitho import const
+
+
+def calc_sigma(
+    polar: str, kxplus: np.ndarray, kyplus: np.ndarray, sigma: np.ndarray
+) -> np.ndarray:
+    new_sigma = np.zeros((const.Nrange, const.Nrange), dtype=complex)
+    for i in range(const.Nrange):
+        l = const.lindex[i]
+        m = const.mindex[i]
+        for ip in range(const.Nrange):
+            llp = l - const.lindex[ip] + 2 * const.LMAX
+            mmp = m - const.mindex[ip] + 2 * const.MMAX
+            if polar == "X":
+                new_sigma[i, ip] = sigma[llp, mmp] * kxplus[ip]
+            else:
+                new_sigma[i, ip] = sigma[llp, mmp] * kyplus[ip]
+    return new_sigma
 
 
 def absorber(
@@ -29,19 +46,10 @@ def absorber(
     # eigenvalues and eigenvectors
     w, br1 = np.linalg.eig(D)
     al1 = np.sqrt(w)
-    Cjp = np.linalg.inv(br1)
-    Cjp = Cjp @ br2
-    new_sigma = np.zeros((const.Nrange, const.Nrange), dtype=complex)
-    for i in range(const.Nrange):
-        l = const.lindex[i]
-        m = const.mindex[i]
-        for ip in range(const.Nrange):
-            llp = l - const.lindex[ip] + 2 * const.LMAX
-            mmp = m - const.mindex[ip] + 2 * const.MMAX
-            if polar == "X":
-                new_sigma[i, ip] = sigma[llp, mmp] * kxplus[ip]
-            else:
-                new_sigma[i, ip] = sigma[llp, mmp] * kyplus[ip]
+    # Cjp = np.linalg.inv(br1)
+    # Cjp = Cjp @ br2
+    Cjp = np.linalg.solve(br1, br2)
+    new_sigma = calc_sigma(polar, kxplus, kyplus, sigma)
 
     B1 = const.i_complex * (
         const.k * br1
@@ -50,8 +58,9 @@ def absorber(
         * new_sigma
         @ br1
     )
-    inv_B1 = np.linalg.inv(B1)
-    Cj = inv_B1 @ B2
+    # inv_B1 = np.linalg.inv(B1)
+    # Cj = inv_B1 @ B2
+    Cj = np.linalg.solve(B1, B2)
     gamma = np.exp(const.i_complex * al1 * dabs)
     T1UL = 0.5 * (Cj + np.outer(1 / al1, al2) * Cjp) / gamma[:, None]
     T1UR = 0.5 * (Cj - np.outer(1 / al1, al2) * Cjp) / gamma[:, None]

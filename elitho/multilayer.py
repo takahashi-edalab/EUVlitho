@@ -1,10 +1,9 @@
 import numpy as np
 from scipy import sparse
-from src import const
+from elitho import const
 
 
-# helper: build diagonal sparse matrix from values
-def diag_mat(vals):
+def diag_mat(vals: np.ndarray) -> sparse.csr_matrix:
     return sparse.diags(vals, offsets=0, format="csr", dtype=np.complex128)
 
 
@@ -18,7 +17,7 @@ def transfer_matrix(
     current_thickness: float,
     next_alpha: np.ndarray,
     next_epsilon: complex,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[sparse.csr_matrix, sparse.csr_matrix, sparse.csr_matrix, sparse.csr_matrix]:
     # identity diag Triplet (Cjp) -> all ones
     k = const.k
     Cjp_vals = np.ones(matrix_size, dtype=np.complex128)
@@ -53,7 +52,7 @@ def multilayer_transfer_matrix(
     kxplus: np.ndarray,
     kyplus: np.ndarray,
     kxy2: np.ndarray,
-):
+) -> tuple[np.ndarray, np.ndarray]:
 
     # compute per-mode propagation constants (complex)
     k = const.k
@@ -179,7 +178,4 @@ def multilayer_transfer_matrix(
     # final combination with TRU* blocks
     URUU = TRUUL.dot(UU) + TRUUR.dot(UB)
     URUB = TRUBL.dot(UU) + TRUBR.dot(UB)
-
-    # TODO: ensure CSR format
-    # return URUU.tocsr(), URUB.tocsr()
-    return URUU, URUB
+    return URUU.toarray(), URUB.toarray()

@@ -1,5 +1,5 @@
 import numpy as np
-from src import const
+from elitho import const
 
 
 def electric_field_distribution(
