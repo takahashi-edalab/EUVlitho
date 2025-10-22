@@ -32,10 +32,10 @@ def coefficients(
     pattern_mask: "xp.ndarray",
 ) -> tuple["xp.ndarray", "xp.ndarray", "xp.ndarray", "xp.ndarray"]:
     xp = cp.get_array_module(pattern_mask)
-    epses = cp.zeros((const.NABS, const.Lrange2, const.Mrange2), dtype=xp.complex128)
-    etas = cp.zeros_like(epses)
-    zetas = cp.zeros_like(epses)
-    sigmas = cp.zeros_like(epses)
+    epses = xp.zeros((const.NABS, const.Lrange2, const.Mrange2), dtype=xp.complex128)
+    etas = xp.zeros_like(epses)
+    zetas = xp.zeros_like(epses)
+    sigmas = xp.zeros_like(epses)
     for n in range(const.NABS):
         # eps
         eps = mask(

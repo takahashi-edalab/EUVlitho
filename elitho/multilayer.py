@@ -1,26 +1,33 @@
-import numpy as np
-from scipy import sparse
+import cupy as cp
 from elitho import const
 
 
-def diag_mat(vals: np.ndarray) -> sparse.csr_matrix:
-    return sparse.diags(vals, offsets=0, format="csr", dtype=np.complex128)
+def diag_mat(vals: "xp.ndarray") -> "sparse.csr_matrix":
+    xp = cp.get_array_module(vals)
+    if xp == cp:
+        from cupyx.scipy import sparse
+    else:
+        from scipy import sparse
+    return sparse.diags(vals, offsets=0, format="csr", dtype=xp.complex128)
 
 
 def transfer_matrix(
     polar: str,
     matrix_size: int,
-    kxplus: np.ndarray,
-    kyplus: np.ndarray,
-    current_alpha: np.ndarray,
+    kxplus: "xp.ndarray",
+    kyplus: "xp.ndarray",
+    current_alpha: "xp.ndarray",
     current_epsilon: complex,
     current_thickness: float,
-    next_alpha: np.ndarray,
+    next_alpha: "xp.ndarray",
     next_epsilon: complex,
-) -> tuple[sparse.csr_matrix, sparse.csr_matrix, sparse.csr_matrix, sparse.csr_matrix]:
+) -> tuple[
+    "sparse.csr_matrix", "sparse.csr_matrix", "sparse.csr_matrix", "sparse.csr_matrix"
+]:
+    xp = cp.get_array_module(kxplus)
     # identity diag Triplet (Cjp) -> all ones
     k = const.k
-    Cjp_vals = np.ones(matrix_size, dtype=np.complex128)
+    Cjp_vals = xp.ones(matrix_size, dtype=xp.complex128)
 
     # Build Cj depending on polarization (diagonal entries)
     if polar == "X":
@@ -33,7 +40,7 @@ def transfer_matrix(
             k - (kyplus**2) / k / current_epsilon
         )
 
-    gamma = np.exp(const.i_complex * current_alpha * current_thickness)
+    gamma = xp.exp(const.i_complex * current_alpha * current_thickness)
     # element-wise arrays for each diag
     ul_vals = 0.5 * (Cj_vals + (next_alpha / current_alpha) * Cjp_vals) / gamma
     ur_vals = 0.5 * (Cj_vals - (next_alpha / current_alpha) * Cjp_vals) / gamma
@@ -49,19 +56,20 @@ def transfer_matrix(
 def multilayer_transfer_matrix(
     polar: str,
     matrix_size: int,
-    kxplus: np.ndarray,
-    kyplus: np.ndarray,
-    kxy2: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray]:
+    kxplus: "xp.ndarray",
+    kyplus: "xp.ndarray",
+    kxy2: "xp.ndarray",
+) -> tuple["sparse.csr_matrix", "sparse.csr_matrix"]:
 
+    xp = cp.get_array_module(kxplus)
     # compute per-mode propagation constants (complex)
     k = const.k
-    alpha_sio2 = np.sqrt(k * k * const.epsilon_si_o2 - kxy2)
-    alpha_mo = np.sqrt(k * k * const.epsilon_mo - kxy2)
-    alpha_si = np.sqrt(k * k * const.epsilon_si - kxy2)
-    alpha_mo_si2 = np.sqrt(k * k * const.epsilon_mo_si2 - kxy2)
-    alpha_ru = np.sqrt(k * k * const.epsilon_ru - kxy2)
-    alpha_ru_si = np.sqrt(k * k * const.epsilon_ru_si - kxy2)
+    alpha_sio2 = xp.sqrt(k * k * const.epsilon_si_o2 - kxy2)
+    alpha_mo = xp.sqrt(k * k * const.epsilon_mo - kxy2)
+    alpha_si = xp.sqrt(k * k * const.epsilon_si - kxy2)
+    alpha_mo_si2 = xp.sqrt(k * k * const.epsilon_mo_si2 - kxy2)
+    alpha_ru = xp.sqrt(k * k * const.epsilon_ru - kxy2)
+    alpha_ru_si = xp.sqrt(k * k * const.epsilon_ru_si - kxy2)
 
     # MO layer -> MO/Si2 layer
     TMOUL, TMOUR, TMOBL, TMOBR = transfer_matrix(
@@ -178,4 +186,4 @@ def multilayer_transfer_matrix(
     # final combination with TRU* blocks
     URUU = TRUUL.dot(UU) + TRUUR.dot(UB)
     URUB = TRUBL.dot(UU) + TRUBR.dot(UB)
-    return URUU.toarray(), URUB.toarray()
+    return URUU, URUB
