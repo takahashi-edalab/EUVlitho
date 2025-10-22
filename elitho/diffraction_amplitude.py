@@ -3,6 +3,30 @@ from elitho import const, fourier, multilayer
 from elitho.absorber import absorber
 
 
+def calc_Ax(FG: np.ndarray, kx0: float, ky0: float) -> np.ndarray:
+    Ax = np.zeros((const.nsourceX, const.nsourceY, const.Nrange), dtype=np.complex128)
+    for ls in range(-const.lsmaxX, const.lsmaxX + 1):
+        for ms in range(-const.lsmaxY, const.lsmaxY + 1):
+            if (ls * const.MX / const.dx) ** 2 + (ms * const.MY / const.dy) ** 2 <= (
+                const.NA / const.wavelength
+            ) ** 2:
+                kx = kx0 + ls * 2 * np.pi / const.dx
+                ky = ky0 + ms * 2 * np.pi / const.dy
+                kz = np.sqrt(const.k**2 - kx**2 - ky**2)
+                Ax0p = 1.0
+                AS = np.zeros(const.Nrange, dtype=complex)
+                for i in range(const.Nrange):
+                    if const.lindex[i] == ls and const.mindex[i] == ms:
+                        AS[i] = 2 * kz * Ax0p
+                FGA = FG @ AS
+                Ax[ls + const.lsmaxX][ms + const.lsmaxY] = -FGA
+                for i in range(const.Nrange):
+                    if const.lindex[i] == ls and const.mindex[i] == ms:
+                        Ax[ls + const.lsmaxX][ms + const.lsmaxY][i] += Ax0p
+
+    return Ax
+
+
 def diffraction_amplitude(
     polar: str, mask2d: np.ndarray, kx0: float, ky0: float
 ) -> np.ndarray:
@@ -69,24 +93,6 @@ def diffraction_amplitude(
     FG = al_B / klm[:, np.newaxis]
     FG = np.matmul(FG, new_U1U)
     #
-    Ax = np.zeros((const.nsourceX, const.nsourceY, const.Nrange), dtype=np.complex128)
-    for ls in range(-const.lsmaxX, const.lsmaxX + 1):
-        for ms in range(-const.lsmaxY, const.lsmaxY + 1):
-            if (ls * const.MX / const.dx) ** 2 + (ms * const.MY / const.dy) ** 2 <= (
-                const.NA / const.wavelength
-            ) ** 2:
-                kx = kx0 + ls * 2 * np.pi / const.dx
-                ky = ky0 + ms * 2 * np.pi / const.dy
-                kz = np.sqrt(const.k**2 - kx**2 - ky**2)
-                Ax0p = 1.0
-                AS = np.zeros(const.Nrange, dtype=complex)
-                for i in range(const.Nrange):
-                    if const.lindex[i] == ls and const.mindex[i] == ms:
-                        AS[i] = 2 * kz * Ax0p
-                FGA = FG @ AS
-                Ax[ls + const.lsmaxX][ms + const.lsmaxY] = -FGA
-                for i in range(const.Nrange):
-                    if const.lindex[i] == ls and const.mindex[i] == ms:
-                        Ax[ls + const.lsmaxX][ms + const.lsmaxY][i] += Ax0p
+    Ax = calc_Ax(FG, kx0, ky0)
 
     return Ax

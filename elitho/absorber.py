@@ -46,9 +46,7 @@ def absorber(
     # eigenvalues and eigenvectors
     w, br1 = np.linalg.eig(D)
     al1 = np.sqrt(w)
-    # Cjp = np.linalg.inv(br1)
-    # Cjp = Cjp @ br2
-    Cjp = np.linalg.solve(br1, br2)
+    Cjp = np.linalg.solve(br1, br2)  # Cjp = np.linalg.inv(br1) @ br2
     new_sigma = calc_sigma(polar, kxplus, kyplus, sigma)
 
     B1 = const.i_complex * (
@@ -58,9 +56,8 @@ def absorber(
         * new_sigma
         @ br1
     )
-    # inv_B1 = np.linalg.inv(B1)
-    # Cj = inv_B1 @ B2
-    Cj = np.linalg.solve(B1, B2)
+
+    Cj = np.linalg.solve(B1, B2)  # Cj = np.linalg.inv(B1) @ B2
     gamma = np.exp(const.i_complex * al1 * dabs)
     T1UL = 0.5 * (Cj + np.outer(1 / al1, al2) * Cjp) / gamma[:, None]
     T1UR = 0.5 * (Cj - np.outer(1 / al1, al2) * Cjp) / gamma[:, None]
