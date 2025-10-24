@@ -1,5 +1,6 @@
 import cupy as cp
 from elitho import const
+from elitho.utils.mat_utils import linalg_eig
 
 
 def calc_sigma(
@@ -47,7 +48,8 @@ def absorber(
     D[xp.arange(const.Nrange), xp.arange(const.Nrange)] -= kxy2
 
     # eigenvalues and eigenvectors
-    w, br1 = xp.linalg.eig(D)
+    # w, br1 = xp.linalg.eig(D) # cupy is not compatible with linalg_eig
+    w, br1 = linalg_eig(D)
     al1 = xp.sqrt(w)
     Cjp = xp.linalg.solve(br1, br2)  # Cjp = np.linalg.inv(br1) @ br2
     new_sigma = calc_sigma(polar, kxplus, kyplus, sigma)

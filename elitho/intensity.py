@@ -156,11 +156,21 @@ def intensity(mask2d: np.ndarray) -> np.ndarray:
 
 
 def main():
+    import time
     from elitho import use_backend, get_backend
+    from elitho.mask_pattern import LinePattern
 
-    use_backend("cupy")
-    xp = get_backend()
-    i = intensity(xp.ones((const.NDIVX, const.NDIVY)))
+    mask = LinePattern(cd=56, gap=80, direction="V", field_type="DF")(
+        const.NDIVX, const.NDIVY
+    )
+    print(mask.shape)
+
+    use_backend("numpy")
+    # xp = get_backend()
+    # i = intensity(xp.ones((const.NDIVX, const.NDIVY)))
+    start = time.time()
+    i = intensity(mask)
+    print(f"Elapsed time: {time.time() - start} [s]")
 
 
 if __name__ == "__main__":
