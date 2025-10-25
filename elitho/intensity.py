@@ -1,45 +1,8 @@
 import numpy as np
-from elitho import const
+from elitho import const, pupil
 from elitho.diffraction_amplitude import diffraction_amplitude
 from elitho.source import abbe_source
 from elitho.electro_field import electro_field
-
-
-def find_valid_output_points(nrange: int) -> tuple[np.ndarray, np.ndarray, int]:
-    """Find valid output points based on source and pupil conditions"""
-    linput = np.zeros(nrange, dtype=int)
-    minput = np.zeros(nrange, dtype=int)
-    ninput = 0
-    for ip in range(const.noutX):
-        for jp in range(const.noutY):
-            snum = 0
-            for is_src in range(const.nsourceX):
-                for js_src in range(const.nsourceY):
-                    source_condition = (
-                        (is_src - const.lsmaxX) * const.MX / const.dx
-                    ) ** 2 + ((js_src - const.lsmaxY) * const.MY / const.dy) ** 2 <= (
-                        const.NA / const.wavelength
-                    ) ** 2
-                    pupil_condition = (
-                        (ip - const.lpmaxX + is_src - const.lsmaxX)
-                        * const.MX
-                        / const.dx
-                    ) ** 2 + (
-                        (jp - const.lpmaxY + js_src - const.lsmaxY)
-                        * const.MY
-                        / const.dy
-                    ) ** 2 <= (
-                        const.NA / const.wavelength
-                    ) ** 2
-                    if source_condition and pupil_condition:
-                        snum += 1
-
-            if snum > 0:
-                linput[ninput] = ip - const.lpmaxX
-                minput[ninput] = jp - const.lpmaxY
-                ninput += 1
-
-    return linput, minput, ninput
 
 
 def na_filter_amplitude_map(Ax: np.ndarray) -> np.ndarray:
@@ -72,7 +35,7 @@ def intensity(mask2d: np.ndarray) -> np.ndarray:
     SDIVMAX = np.max(SDIV)
     SDIVSUM = np.sum(SDIV)
 
-    linput, minput, ninput = find_valid_output_points(const.Nrange)
+    linput, minput, _, ninput = pupil.find_valid_pupil_points(const.Nrange)
     ncut = ninput
 
     isum = np.zeros((const.ndivs, const.ndivs, const.XDIV, const.XDIV, SDIVMAX))
