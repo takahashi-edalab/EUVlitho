@@ -89,23 +89,25 @@ noutYL = 2 * lpmaxY + 10
 
 
 # TODO: constじゃないっぽい -> linear lithoは
-cutx = NA / MX * 6.0
-cuty = NA / MY * 6.0
-LMAX = int(cutx * dx / wavelength)
-MMAX = int(cuty * dy / wavelength)
-Lrange = 2 * LMAX + 1
-Mrange = 2 * MMAX + 1
-Lrange2 = 4 * LMAX + 1
-Mrange2 = 4 * MMAX + 1
+# cutx, cutyの係数を変更できるようにしたい
+# DiffractionOrderDescriptor
+# cutx = NA / MX * 6.0
+# cuty = NA / MY * 6.0
+# LMAX = int(cutx * dx / wavelength)
+# MMAX = int(cuty * dy / wavelength)
+# Lrange = 2 * LMAX + 1
+# Mrange = 2 * MMAX + 1
+# Lrange2 = 4 * LMAX + 1
+# Mrange2 = 4 * MMAX + 1
 
 
-from elitho import diffraction_order
+# from elitho import diffraction_order
 
-lindex, mindex = diffraction_order.valid_coordinates(
-    LMAX, MMAX, valid_region_fn=diffraction_order.rounded_diamond
-)
-Nrange = len(lindex)
-Nrange2 = Nrange * 2
+# lindex, mindex = diffraction_order.valid_coordinates(
+#     LMAX, MMAX, valid_region_fn=diffraction_order.rounded_diamond
+# )
+# Nrange = len(lindex)
+# Nrange2 = Nrange * 2
 
 
 eabs = np.zeros(100, dtype=complex)  # 各層の複素誘電率
@@ -117,5 +119,5 @@ z = 0.0  # defocus
 z0 = dabst + 42.0  # reflection point inside ML from the top of the absorber
 
 # TODO: delete this
-cexpX = np.exp(-2j * np.pi * np.arange(FDIVX + 1) / FDIVX)
-cexpY = np.exp(-2j * np.pi * np.arange(FDIVY + 1) / FDIVY)
+# cexpX = np.exp(-2j * np.pi * np.arange(FDIVX + 1) / FDIVX)
+# cexpY = np.exp(-2j * np.pi * np.arange(FDIVY + 1) / FDIVY)
