@@ -99,22 +99,11 @@ Lrange2 = 4 * LMAX + 1
 Mrange2 = 4 * MMAX + 1
 
 
-def diffraction_order_limits(LMAX: int, MMAX: int) -> tuple[np.ndarray, np.ndarray]:
-    """Calculate diffraction order limits efficiently using NumPy vectorization"""
-    # create 1D index arrays
-    lvals = np.arange(-LMAX, LMAX + 1)
-    mvals = np.arange(-MMAX, MMAX + 1)
-    # create 2D grids
-    ll, mm = np.meshgrid(lvals, mvals, indexing="ij")
-    # apply the condition
-    mask = (abs(ll) / (LMAX + 0.01) + 1.0) * (abs(mm) / (MMAX + 0.01) + 1.0) <= 2.0
-    # extract indices that satisfy the condition
-    lindex = ll[mask]
-    mindex = mm[mask]
-    return lindex, mindex
+from elitho import diffraction_order
 
-
-lindex, mindex = diffraction_order_limits(LMAX, MMAX)
+lindex, mindex = diffraction_order.valid_coordinates(
+    LMAX, MMAX, valid_region_fn=diffraction_order.rounded_diamond
+)
 Nrange = len(lindex)
 Nrange2 = Nrange * 2
 

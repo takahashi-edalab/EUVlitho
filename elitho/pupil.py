@@ -27,7 +27,7 @@ def count_overlapping_sources(px: int, py: int) -> int:
     int
         Number of valid illumination sources overlapping with the given pupil point.
     """
-    snum = 0
+    n_sources = 0
     for is_src in range(const.nsourceX):
         for js_src in range(const.nsourceY):
             source_condition = ((is_src - const.lsmaxX) * const.MX / const.dx) ** 2 + (
@@ -41,8 +41,8 @@ def count_overlapping_sources(px: int, py: int) -> int:
                 const.NA / const.wavelength
             ) ** 2
             if source_condition and pupil_condition:
-                snum += 1
-    return snum
+                n_sources += 1
+    return n_sources
 
 
 def find_valid_pupil_points(
