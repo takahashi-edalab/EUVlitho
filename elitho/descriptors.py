@@ -19,14 +19,14 @@ class DiffractionOrderDescriptor:
         cutoff_factor : float
             Empirical factor for spatial frequency cutoff. Typical value ~6.0.
         valid_region_fn : callable
-            Function defining valid diffraction order region (e.g., ellipse, diamond).
+            Function defining valid diffraction order region (e.g., ellipse, rounded_diamond).
         """
         self._cutoff_factor = cutoff_factor
         self._valid_region_fn = valid_region_fn
 
         from elitho import diffraction_order
 
-        self._meshgrid_x_coords, self._meshgrid_y_coords = (
+        self._valid_x_coords, self._valid_y_coords = (
             diffraction_order.valid_coordinates(
                 self.max_diffraction_order_x,
                 self.max_diffraction_order_y,
@@ -131,7 +131,7 @@ class DiffractionOrderDescriptor:
         return 4 * self.max_diffraction_order_y + 1
 
     @cached_property
-    def meshgrid_x_coords(self) -> np.ndarray:
+    def valid_x_coords(self) -> np.ndarray:
         """
         Meshgrid of valid diffraction order x-coordinates.
 
@@ -140,10 +140,10 @@ class DiffractionOrderDescriptor:
         np.ndarray
             Array of valid diffraction order x-coordinates.
         """
-        return self._meshgrid_x_coords
+        return self._valid_x_coords
 
     @cached_property
-    def meshgrid_y_coords(self) -> np.ndarray:
+    def valid_y_coords(self) -> np.ndarray:
         """
         Meshgrid of valid diffraction order y-coordinates.
 
@@ -152,4 +152,16 @@ class DiffractionOrderDescriptor:
         np.ndarray
             Array of valid diffraction order y-coordinates.
         """
-        return self._meshgrid_y_coords
+        return self._valid_y_coords
+
+    @cached_property
+    def num_valid_diffraction_orders(self) -> int:
+        """
+        Number of valid diffraction orders based on the defined region.
+
+        Returns
+        -------
+        int
+            Count of valid diffraction orders.
+        """
+        return len(self._valid_x_coords)

@@ -12,7 +12,8 @@ dx = NDIVX
 dy = NDIVY
 XDIV = NDIVX // MX
 YDIV = NDIVY // MY
-
+MASK_REFINEMENT_FACTOR_X = 1  # Mask refinement factor in X
+MASK_REFINEMENT_FACTOR_Y = 1  # Mask refinement factor in Y
 
 # Optical parameters
 wavelength = 13.5  # wavelength (nm)
@@ -36,10 +37,6 @@ openangle = 90.0  # opening angle for dipole illumination
 # Material properties
 nta = 0.9567 + 0.0343j  # absorber complex refractive index
 NML = 40  # number of the multilayer pairs
-NABS = 1  # number of the absorber layers
-dabst = 60.0  # total absorber thickness (nm)
-z = 0.0  # defocus
-z0 = dabst + 42.0  # reflection point inside ML from the top of the absorber
 
 # complex refractive index
 n_mo = 0.9238 + 0.006435j  # Mo layer
@@ -69,8 +66,7 @@ epsilon_si_o2 = n_si_o2**2
 
 # Calculation parameters
 delta = 1.0
-FDIVX = int(dx / delta + 0.000001)
-FDIVY = int(dy / delta + 0.000001)
+
 sigmadiv = 2.0  # division angle of the source (degree)
 ndivs = max(1, int(180.0 / pi * wavelength / dx / sigmadiv))
 lsmaxX = int(NA * dx / MX / wavelength + 1)
@@ -88,36 +84,43 @@ noutXL = 2 * lpmaxX + 10
 noutYL = 2 * lpmaxY + 10
 
 
-# TODO: constじゃないっぽい -> linear lithoは
-# cutx, cutyの係数を変更できるようにしたい
-# DiffractionOrderDescriptor
-# cutx = NA / MX * 6.0
-# cuty = NA / MY * 6.0
-# LMAX = int(cutx * dx / wavelength)
-# MMAX = int(cuty * dy / wavelength)
-# Lrange = 2 * LMAX + 1
-# Mrange = 2 * MMAX + 1
-# Lrange2 = 4 * LMAX + 1
-# Mrange2 = 4 * MMAX + 1
+# TODO: 以下削除
+cutx = NA / MX * 6.0
+cuty = NA / MY * 6.0
+LMAX = int(cutx * dx / wavelength)  # L -> x
+MMAX = int(cuty * dy / wavelength)  # M -> y
+Lrange = 2 * LMAX + 1
+Mrange = 2 * MMAX + 1
+Lrange2 = 4 * LMAX + 1  # x
+Mrange2 = 4 * MMAX + 1  # y
+from elitho import diffraction_order
+
+lindex, mindex = diffraction_order.valid_coordinates(
+    LMAX, MMAX, valid_region_fn=diffraction_order.rounded_diamond
+)
+Nrange = len(lindex)
+Nrange2 = Nrange * 2
+# ここまで
 
 
-# from elitho import diffraction_order
-
-# lindex, mindex = diffraction_order.valid_coordinates(
-#     LMAX, MMAX, valid_region_fn=diffraction_order.rounded_diamond
-# )
-# Nrange = len(lindex)
-# Nrange2 = Nrange * 2
-
-
-eabs = np.zeros(100, dtype=complex)  # 各層の複素誘電率
-eabs[0] = nta**2  # 吸収体
-dabs = np.zeros(100)
-dabst = 60.0  # total absorber thickness (nm)
-dabs[0] = dabst
+# ?
 z = 0.0  # defocus
+dabst = 60.0  # absorber thickness (nm)
 z0 = dabst + 42.0  # reflection point inside ML from the top of the absorber
 
+
+# NABS = 1  # number of the absorber layers
+# eabs = np.zeros(100, dtype=complex)  # 各層の複素誘電率
+# eabs[0] = nta**2  # 吸収体
+# dabs = np.zeros(100)
+# dabs[0] = dabst
+
+absorption_amplitudes = [nta**2]
+absorber_layer_thicknesses = [dabst]
+
+
 # TODO: delete this
+FDIVX = int(dx / delta + 0.000001)
+FDIVY = int(dy / delta + 0.000001)
 # cexpX = np.exp(-2j * np.pi * np.arange(FDIVX + 1) / FDIVX)
 # cexpY = np.exp(-2j * np.pi * np.arange(FDIVY + 1) / FDIVY)

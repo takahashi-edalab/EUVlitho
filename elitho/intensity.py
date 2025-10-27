@@ -1,11 +1,13 @@
 import numpy as np
-from elitho import const, pupil
+from elitho import const, pupil, descriptors, diffraction_order
 from elitho.diffraction_amplitude import diffraction_amplitude
 from elitho.source import abbe_source
 from elitho.electro_field import electro_field
 
 
-def na_filter_amplitude_map(Ax: np.ndarray) -> np.ndarray:
+def na_filter_amplitude_map(
+    Ax: np.ndarray, dod: descriptors.DiffractionOrderDescriptor
+) -> np.ndarray:
     ampxx = np.full(
         (const.nsourceXL, const.nsourceYL, const.noutXL, const.noutYL),
         -1000 + 0j,
@@ -20,10 +22,11 @@ def na_filter_amplitude_map(Ax: np.ndarray) -> np.ndarray:
             ) <= (const.NA / const.wavelength) ** 2
 
             if cond:
-                for n in range(const.Nrange):
-                    ip = const.lindex[n] - (x - const.lsmaxX) + const.lpmaxX
-                    jp = const.mindex[n] - (y - const.lsmaxY) + const.lpmaxY
-
+                for n in range(dod.num_valid_diffraction_orders):
+                    # ip = const.lindex[n] - (x - const.lsmaxX) + const.lpmaxX
+                    # jp = const.mindex[n] - (y - const.lsmaxY) + const.lpmaxY
+                    ip = dod.valid_x_coords[n] - (x - const.lsmaxX) + const.lpmaxX
+                    jp = dod.valid_y_coords[n] - (y - const.lsmaxY) + const.lpmaxY
                     if 0 <= ip < const.noutXL and 0 <= jp < const.noutYL:
                         ampxx[x, y, ip, jp] = Ax[x, y, n]
 
@@ -35,7 +38,13 @@ def intensity(mask2d: np.ndarray) -> np.ndarray:
     SDIVMAX = np.max(SDIV)
     SDIVSUM = np.sum(SDIV)
 
-    linput, minput, _, ninput = pupil.find_valid_pupil_points(const.Nrange)
+    dod = descriptors.DiffractionOrderDescriptor(
+        6.0, valid_region_fn=diffraction_order.rounded_diamond
+    )
+
+    linput, minput, _, ninput = pupil.find_valid_pupil_points(
+        dod.num_valid_diffraction_orders
+    )
     ncut = ninput
 
     isum = np.zeros((const.ndivs, const.ndivs, const.XDIV, const.XDIV, SDIVMAX))
@@ -46,7 +55,7 @@ def intensity(mask2d: np.ndarray) -> np.ndarray:
             # print(type(sx0), type(sy0)) # numpy.float64
             # exit()
             Ax = diffraction_amplitude("X", mask2d, sx0, sy0)
-            ampxx = na_filter_amplitude_map(Ax)
+            ampxx = na_filter_amplitude_map(Ax, dod)
             Ex0m, Ey0m, Ez0m = electro_field(
                 SDIV, l0s, m0s, nsx, nsy, ncut, sx0, sy0, linput, minput, ampxx
             )

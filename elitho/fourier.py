@@ -1,63 +1,110 @@
 import cupy as cp
-from elitho import const
+from elitho import const, descriptors
 
 
-def mask(pattern_mask: "xp.ndarray", ampta: complex, ampvc: complex) -> "xp.ndarray":
-    xp = cp.get_array_module(pattern_mask)
-    meshX = const.FDIVX // const.NDIVX
-    meshY = const.FDIVY // const.NDIVY
+def center_slice(center: int, size: int) -> slice:
+    half = size // 2
+    start = center - half
+    end = start + size
+    return slice(start, end)
 
-    pattern = xp.where(
-        xp.kron(pattern_mask, xp.ones((meshX, meshY))), ampta, ampvc
-    ).astype(
-        xp.complex128
-    )  # shape: (FDIVX, FDIVY)
 
-    famp_full = xp.fft.fftshift(xp.fft.fft2(pattern)) / (const.FDIVX * const.FDIVY)
+def refine_mask_pattern(mask: "xp.ndarray", scale_x: int, scale_y: int) -> "xp.ndarray":
+    xp = cp.get_array_module(mask)
+    refined_pattern = xp.kron(mask, xp.ones((scale_x, scale_y))).astype(xp.complex128)
+    return refined_pattern
 
-    # Extract the region around the frequency center
-    cx = const.FDIVX // 2
-    cy = const.FDIVY // 2
-    half_L = const.Lrange2 // 2
-    half_M = const.Mrange2 // 2
 
-    famp = famp_full[
-        cx - half_L : cx + half_L + (const.Lrange2 % 2),
-        cy - half_M : cy + half_M + (const.Mrange2 % 2),
+def extract_central_region(fmap: "xp.ndarray", ew: int, eh: int) -> "xp.ndarray":
+    w, h = fmap.shape
+    cx = w // 2
+    cy = h // 2
+    extracted_famp = fmap[
+        center_slice(cx, ew),
+        center_slice(cy, eh),
     ]
-    return famp
+    return extracted_famp
+
+
+def mask(
+    mask_pattern: "xp.ndarray",
+    ampta: complex,
+    ampvc: complex,
+    extraction_size_x: int = None,
+    extraction_size_y: int = None,
+) -> "xp.ndarray":
+    xp = cp.get_array_module(mask_pattern)
+    # refine mask pattern
+    refined_mask = refine_mask_pattern(
+        mask_pattern, const.MASK_REFINEMENT_FACTOR_X, const.MASK_REFINEMENT_FACTOR_Y
+    )
+    # create amplitude pattern
+    pattern = xp.where(refined_mask, ampta, ampvc).astype(xp.complex128)
+    # FFT
+    w, h = pattern.shape
+    fft_map = xp.fft.fftshift(xp.fft.fft2(pattern)) / (w * h)
+    # extract central region
+    if extraction_size_x is not None and extraction_size_y is not None:
+        fft_map = extract_central_region(
+            fft_map,
+            extraction_size_x,
+            extraction_size_y,
+        )
+    return fft_map
 
 
 def coefficients(
-    pattern_mask: "xp.ndarray",
+    mask_pattern: "xp.ndarray",
+    absorption_amplitudes: list[complex],
+    dod: descriptors.DiffractionOrderDescriptor,
 ) -> tuple["xp.ndarray", "xp.ndarray", "xp.ndarray", "xp.ndarray"]:
-    xp = cp.get_array_module(pattern_mask)
-    epses = xp.zeros((const.NABS, const.Lrange2, const.Mrange2), dtype=xp.complex128)
+    xp = cp.get_array_module(mask_pattern)
+
+    num_absorber_layers = len(absorption_amplitudes)
+    epses = xp.zeros(
+        (
+            num_absorber_layers,
+            dod.num_diffraction_orders_x_expanded,
+            dod.num_diffraction_orders_y_expanded,
+        ),
+        dtype=xp.complex128,
+    )
     etas = xp.zeros_like(epses)
     zetas = xp.zeros_like(epses)
     sigmas = xp.zeros_like(epses)
-    for n in range(const.NABS):
+    for i in range(num_absorber_layers):
         # eps
         eps = mask(
-            pattern_mask=pattern_mask,
-            ampta=const.eabs[n],
+            mask_pattern=mask_pattern,
+            ampta=absorption_amplitudes[i],
             ampvc=1.0,
+            extraction_size_x=dod.num_diffraction_orders_x_expanded,
+            extraction_size_y=dod.num_diffraction_orders_y_expanded,
         )
         # sigma
         sigma = mask(
-            pattern_mask=pattern_mask,
-            ampta=1 / const.eabs[n],
+            mask_pattern=mask_pattern,
+            ampta=1 / absorption_amplitudes[i],
             ampvc=1.0,
+            extraction_size_x=dod.num_diffraction_orders_x_expanded,
+            extraction_size_y=dod.num_diffraction_orders_y_expanded,
         )
         # leps
         leps = mask(
-            pattern_mask=pattern_mask,
-            ampta=xp.log(const.eabs[n]),
+            mask_pattern=mask_pattern,
+            ampta=xp.log(absorption_amplitudes[i]),
             ampvc=0.0,
+            extraction_size_x=dod.num_diffraction_orders_x_expanded,
+            extraction_size_y=dod.num_diffraction_orders_y_expanded,
         )
-
-        i_idx = xp.arange(const.Lrange2) - 2 * const.LMAX
-        j_idx = xp.arange(const.Mrange2) - 2 * const.MMAX
+        i_idx = (
+            xp.arange(dod.num_diffraction_orders_x_expanded)
+            - 2 * dod.max_diffraction_order_x
+        )
+        j_idx = (
+            xp.arange(dod.num_diffraction_orders_y_expanded)
+            - 2 * dod.max_diffraction_order_y
+        )
 
         zetal = const.i_complex * 2 * const.pi * i_idx[:, None] / const.dx
         zetam = const.i_complex * 2 * const.pi * j_idx[None, :] / const.dy
@@ -65,8 +112,8 @@ def coefficients(
         eta = zetal * leps
         zeta = zetam * leps
 
-        epses[n] = eps
-        sigmas[n] = sigma
-        etas[n] = eta
-        zetas[n] = zeta
+        epses[i] = eps
+        sigmas[i] = sigma
+        etas[i] = eta
+        zetas[i] = zeta
     return epses, etas, zetas, sigmas
