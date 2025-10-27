@@ -43,3 +43,16 @@
 #             famp[i, j] = fourier(l, ampx, const.cexpX, const.FDIVX)
 
 #     return famp
+
+
+# def calc_sigma():
+# for i in range(dod.num_valid_diffraction_orders):
+#     l = dod.valid_x_coords[i]
+#     m = dod.valid_y_coords[i]
+#     for ip in range(dod.num_valid_diffraction_orders):
+#         llp = l - dod.valid_x_coords[ip] + 2 * dod.max_diffraction_order_x
+#         mmp = m - dod.valid_y_coords[ip] + 2 * dod.max_diffraction_order_y
+#         if polar == "X":
+#             new_sigma[i, ip] = sigma[llp, mmp] * kxplus[ip]
+#         else:
+#             new_sigma[i, ip] = sigma[llp, mmp] * kyplus[ip]

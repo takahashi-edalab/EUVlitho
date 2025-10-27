@@ -3,9 +3,17 @@ from elitho import const, fourier, multilayer, descriptors
 from elitho.absorber import absorber
 
 
-def calc_Ax(FG: "xp.ndarray", kx0: float, ky0: float) -> "xp.ndarray":
+def calc_Ax(
+    FG: "xp.ndarray",
+    kx0: float,
+    ky0: float,
+    dod: descriptors.DiffractionOrderDescriptor,
+) -> "xp.ndarray":
     xp = cp.get_array_module(FG)
-    Ax = xp.zeros((const.nsourceX, const.nsourceY, const.Nrange), dtype=xp.complex128)
+    Ax = xp.zeros(
+        (const.nsourceX, const.nsourceY, dod.num_valid_diffraction_orders),
+        dtype=xp.complex128,
+    )
     for ls in range(-const.lsmaxX, const.lsmaxX + 1):
         for ms in range(-const.lsmaxY, const.lsmaxY + 1):
             if (ls * const.MX / const.dx) ** 2 + (ms * const.MY / const.dy) ** 2 <= (
@@ -15,14 +23,14 @@ def calc_Ax(FG: "xp.ndarray", kx0: float, ky0: float) -> "xp.ndarray":
                 ky = ky0 + ms * 2 * const.pi / const.dy
                 kz = xp.sqrt(const.k**2 - kx**2 - ky**2)
                 Ax0p = 1.0
-                AS = xp.zeros(const.Nrange, dtype=xp.complex128)
-                for i in range(const.Nrange):
-                    if const.lindex[i] == ls and const.mindex[i] == ms:
+                AS = xp.zeros(dod.num_valid_diffraction_orders, dtype=xp.complex128)
+                for i in range(dod.num_valid_diffraction_orders):
+                    if dod.valid_x_coords[i] == ls and dod.valid_y_coords[i] == ms:
                         AS[i] = 2 * kz * Ax0p
                 FGA = FG @ AS
                 Ax[ls + const.lsmaxX][ms + const.lsmaxY] = -FGA
-                for i in range(const.Nrange):
-                    if const.lindex[i] == ls and const.mindex[i] == ms:
+                for i in range(dod.num_valid_diffraction_orders):
+                    if dod.valid_x_coords[i] == ls and dod.valid_y_coords[i] == ms:
                         Ax[ls + const.lsmaxX][ms + const.lsmaxY][i] += Ax0p
 
     return Ax
@@ -37,7 +45,9 @@ def diffraction_amplitude(
 ) -> "xp.ndarray":
     xp = cp.get_array_module(mask2d)
     # --- 1. calc fourier coefficients for each layer ---
-    epsN, etaN, zetaN, sigmaN = fourier.coefficients(mask2d)
+    epsN, etaN, zetaN, sigmaN = fourier.coefficients(
+        mask2d, const.absorption_amplitudes, dod
+    )
 
     # --- 2. kxplus, kyplus, kxy2, klm
     # kxplus = kx0 + 2 * const.pi * xp.array(const.lindex) / const.dx
@@ -48,7 +58,7 @@ def diffraction_amplitude(
 
     # --- 3.calc absorber sequencially from the most above layer ---
     U1U, U1B = multilayer.multilayer_transfer_matrix(
-        polar, const.Nrange, kxplus, kyplus, kxy2
+        polar, dod.num_valid_diffraction_orders, kxplus, kyplus, kxy2
     )
 
     # --- 4. calc initial B matrix ---
@@ -65,12 +75,14 @@ def diffraction_amplitude(
 
     B = Bru
     al = xp.sqrt(const.k**2 * const.epsilon_ru - kxy2)
-    br = xp.eye(const.Nrange, dtype=complex)
-    for n in reversed(range(const.NABS)):
-        eps, eta, zeta, sigma = epsN[n], etaN[n], zetaN[n], sigmaN[n]
-        dabs = const.dabs[n]
+    br = xp.eye(dod.num_valid_diffraction_orders, dtype=complex)
+    # for n in reversed(range(const.NABS)):
+    for eps, eta, zeta, sigma, dab in reversed(
+        list(zip(epsN, etaN, zetaN, sigmaN, const.absorber_layer_thicknesses))
+    ):
         U1U, U1B, B, al, br = absorber(
             polar,
+            dod,
             kxplus,
             kyplus,
             kxy2,
@@ -78,7 +90,7 @@ def diffraction_amplitude(
             eta,
             zeta,
             sigma,
-            dabs,
+            dab,
             al,
             br,
             B,
@@ -100,6 +112,6 @@ def diffraction_amplitude(
     FG = al_B / klm[:, xp.newaxis]
     FG = xp.matmul(FG, new_U1U)
     #
-    Ax = calc_Ax(FG, kx0, ky0)
+    Ax = calc_Ax(FG, kx0, ky0, dod)
 
     return Ax

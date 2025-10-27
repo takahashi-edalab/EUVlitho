@@ -13,7 +13,7 @@ def diag_mat(vals: "xp.ndarray") -> "sparse.csr_matrix":
 
 def transfer_matrix(
     polar: str,
-    matrix_size: int,
+    num_valid_diffraction_orders: int,
     kxplus: "xp.ndarray",
     kyplus: "xp.ndarray",
     current_alpha: "xp.ndarray",
@@ -27,7 +27,7 @@ def transfer_matrix(
     xp = cp.get_array_module(kxplus)
     # identity diag Triplet (Cjp) -> all ones
     k = const.k
-    Cjp_vals = xp.ones(matrix_size, dtype=xp.complex128)
+    Cjp_vals = xp.ones(num_valid_diffraction_orders, dtype=xp.complex128)
 
     # Build Cj depending on polarization (diagonal entries)
     if polar == "X":
@@ -55,7 +55,7 @@ def transfer_matrix(
 
 def multilayer_transfer_matrix(
     polar: str,
-    matrix_size: int,
+    num_valid_diffraction_orders: int,
     kxplus: "xp.ndarray",
     kyplus: "xp.ndarray",
     kxy2: "xp.ndarray",
@@ -74,7 +74,7 @@ def multilayer_transfer_matrix(
     # MO layer -> MO/Si2 layer
     TMOUL, TMOUR, TMOBL, TMOBR = transfer_matrix(
         polar,
-        matrix_size,
+        num_valid_diffraction_orders,
         kxplus,
         kyplus,
         alpha_mo,
@@ -87,7 +87,7 @@ def multilayer_transfer_matrix(
     # MOSI layer -> MO layer
     TMOSIUL, TMOSIUR, TMOSIBL, TMOSIBR = transfer_matrix(
         polar,
-        matrix_size,
+        num_valid_diffraction_orders,
         kxplus,
         kyplus,
         alpha_mo_si2,
@@ -100,7 +100,7 @@ def multilayer_transfer_matrix(
     # SI layer -> MOSI2 layer
     TSIUL, TSIUR, TSIBL, TSIBR = transfer_matrix(
         polar,
-        matrix_size,
+        num_valid_diffraction_orders,
         kxplus,
         kyplus,
         alpha_si,
@@ -113,7 +113,7 @@ def multilayer_transfer_matrix(
     # MOSI2 layer -> SI layer
     TSIMOUL, TSIMOUR, TSIMOBL, TSIMOBR = transfer_matrix(
         polar,
-        matrix_size,
+        num_valid_diffraction_orders,
         kxplus,
         kyplus,
         alpha_mo_si2,
@@ -126,7 +126,7 @@ def multilayer_transfer_matrix(
     # RU/Si layer -> SI layer
     TSIRUUL, TSIRUUR, TSIRUBL, TSIRUBR = transfer_matrix(
         polar,
-        matrix_size,
+        num_valid_diffraction_orders,
         kxplus,
         kyplus,
         alpha_ru_si,
@@ -139,7 +139,7 @@ def multilayer_transfer_matrix(
     # RU layer -> RU/Si layer
     TRUUL, TRUUR, TRUBL, TRUBR = transfer_matrix(
         polar,
-        matrix_size,
+        num_valid_diffraction_orders,
         kxplus,
         kyplus,
         alpha_ru,
@@ -152,7 +152,7 @@ def multilayer_transfer_matrix(
     # MO layer -> SIO2 layer
     TNU, _, TNB, _ = transfer_matrix(
         polar,
-        matrix_size,
+        num_valid_diffraction_orders,
         kxplus,
         kyplus,
         alpha_mo,

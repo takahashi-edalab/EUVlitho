@@ -13,7 +13,6 @@ def na_filter_amplitude_map(
         -1000 + 0j,
         dtype=np.complex128,
     )
-
     for x in range(const.nsourceXL):
         for y in range(const.nsourceYL):
             cond = (
@@ -23,8 +22,6 @@ def na_filter_amplitude_map(
 
             if cond:
                 for n in range(dod.num_valid_diffraction_orders):
-                    # ip = const.lindex[n] - (x - const.lsmaxX) + const.lpmaxX
-                    # jp = const.mindex[n] - (y - const.lsmaxY) + const.lpmaxY
                     ip = dod.valid_x_coords[n] - (x - const.lsmaxX) + const.lpmaxX
                     jp = dod.valid_y_coords[n] - (y - const.lsmaxY) + const.lpmaxY
                     if 0 <= ip < const.noutXL and 0 <= jp < const.noutYL:
@@ -52,9 +49,7 @@ def intensity(mask2d: np.ndarray) -> np.ndarray:
         for nsy in range(const.ndivs):
             sx0 = 2.0 * const.pi / const.dx * nsx / const.ndivs + const.kx0
             sy0 = 2.0 * const.pi / const.dy * nsy / const.ndivs + const.ky0
-            # print(type(sx0), type(sy0)) # numpy.float64
-            # exit()
-            Ax = diffraction_amplitude("X", mask2d, sx0, sy0)
+            Ax = diffraction_amplitude("X", mask2d, sx0, sy0, dod)
             ampxx = na_filter_amplitude_map(Ax, dod)
             Ex0m, Ey0m, Ez0m = electro_field(
                 SDIV, l0s, m0s, nsx, nsy, ncut, sx0, sy0, linput, minput, ampxx
@@ -109,10 +104,10 @@ def intensity(mask2d: np.ndarray) -> np.ndarray:
                         fny[px, py] = fy
                         fnz[px, py] = fz
 
-                # Inverse FFT to get spatial field distribution
-                fnx_ifft = np.fft.ifft2(fnx)
-                fny_ifft = np.fft.ifft2(fny)
-                fnz_ifft = np.fft.ifft2(fnz)
+                # Inverse FFT without scaling
+                fnx_ifft = np.fft.ifft2(fnx, norm="forward")
+                fny_ifft = np.fft.ifft2(fny, norm="forward")
+                fnz_ifft = np.fft.ifft2(fnz, norm="forward")
 
                 # Calculate intensity
                 intensity = (

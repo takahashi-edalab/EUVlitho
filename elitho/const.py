@@ -84,29 +84,38 @@ noutXL = 2 * lpmaxX + 10
 noutYL = 2 * lpmaxY + 10
 
 
-# TODO: 以下削除
-cutx = NA / MX * 6.0
-cuty = NA / MY * 6.0
-LMAX = int(cutx * dx / wavelength)  # L -> x
-MMAX = int(cuty * dy / wavelength)  # M -> y
-Lrange = 2 * LMAX + 1
-Mrange = 2 * MMAX + 1
-Lrange2 = 4 * LMAX + 1  # x
-Mrange2 = 4 * MMAX + 1  # y
-from elitho import diffraction_order
-
-lindex, mindex = diffraction_order.valid_coordinates(
-    LMAX, MMAX, valid_region_fn=diffraction_order.rounded_diamond
-)
-Nrange = len(lindex)
-Nrange2 = Nrange * 2
-# ここまで
-
-
 # ?
 z = 0.0  # defocus
 dabst = 60.0  # absorber thickness (nm)
 z0 = dabst + 42.0  # reflection point inside ML from the top of the absorber
+
+
+absorption_amplitudes = [nta**2]
+absorber_layer_thicknesses = [dabst]
+
+
+# TODO: delete this
+# FDIVX = int(dx / delta + 0.000001)
+# FDIVY = int(dy / delta + 0.000001)
+# cexpX = np.exp(-2j * np.pi * np.arange(FDIVX + 1) / FDIVX)
+# cexpY = np.exp(-2j * np.pi * np.arange(FDIVY + 1) / FDIVY)
+
+
+# cutx = NA / MX * 6.0
+# cuty = NA / MY * 6.0
+# LMAX = int(cutx * dx / wavelength)  # L -> x
+# MMAX = int(cuty * dy / wavelength)  # M -> y
+# Lrange = 2 * LMAX + 1
+# Mrange = 2 * MMAX + 1
+# Lrange2 = 4 * LMAX + 1  # x
+# Mrange2 = 4 * MMAX + 1  # y
+# from elitho import diffraction_order
+
+# lindex, mindex = diffraction_order.valid_coordinates(
+#     LMAX, MMAX, valid_region_fn=diffraction_order.rounded_diamond
+# )
+# Nrange = len(lindex)
+# Nrange2 = Nrange * 2
 
 
 # NABS = 1  # number of the absorber layers
@@ -114,13 +123,3 @@ z0 = dabst + 42.0  # reflection point inside ML from the top of the absorber
 # eabs[0] = nta**2  # 吸収体
 # dabs = np.zeros(100)
 # dabs[0] = dabst
-
-absorption_amplitudes = [nta**2]
-absorber_layer_thicknesses = [dabst]
-
-
-# TODO: delete this
-FDIVX = int(dx / delta + 0.000001)
-FDIVY = int(dy / delta + 0.000001)
-# cexpX = np.exp(-2j * np.pi * np.arange(FDIVX + 1) / FDIVX)
-# cexpY = np.exp(-2j * np.pi * np.arange(FDIVY + 1) / FDIVY)

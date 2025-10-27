@@ -4,25 +4,29 @@ from elitho.utils.mat_utils import linalg_eig
 
 
 def calc_sigma(
-    polar: str, kxplus: "xp.ndarray", kyplus: "xp.ndarray", sigma: "xp.ndarray"
+    polar: str,
+    dod: "descriptors.DiffractionOrderDescriptor",
+    kxplus: "xp.ndarray",
+    kyplus: "xp.ndarray",
+    sigma: "xp.ndarray",
 ) -> "xp.ndarray":
-    xp = cp.get_array_module(kxplus)
-    new_sigma = xp.zeros((const.Nrange, const.Nrange), dtype=complex)
-    for i in range(const.Nrange):
-        l = const.lindex[i]
-        m = const.mindex[i]
-        for ip in range(const.Nrange):
-            llp = l - const.lindex[ip] + 2 * const.LMAX
-            mmp = m - const.mindex[ip] + 2 * const.MMAX
-            if polar == "X":
-                new_sigma[i, ip] = sigma[llp, mmp] * kxplus[ip]
-            else:
-                new_sigma[i, ip] = sigma[llp, mmp] * kyplus[ip]
+    lx = dod.valid_x_coords
+    ly = dod.valid_y_coords
+    Mx = dod.max_diffraction_order_x
+    My = dod.max_diffraction_order_y
+    llp = lx[:, None] - lx[None, :] + 2 * Mx
+    mmp = ly[:, None] - ly[None, :] + 2 * My
+    if polar == "X":
+        coef = kxplus
+    else:
+        coef = kyplus
+    new_sigma = sigma[llp, mmp] * coef[None, :]
     return new_sigma
 
 
 def absorber(
     polar: str,
+    dod: "descriptors.DiffractionOrderDescriptor",
     kxplus: "xp.ndarray",
     kyplus: "xp.ndarray",
     kxy2: float,
@@ -38,25 +42,38 @@ def absorber(
     U2B: "xp.ndarray",
 ):
     xp = cp.get_array_module(kxplus)
-    print(xp.__name__)
-    l = const.lindex[:, None] - const.lindex[None, :] + 2 * const.LMAX
-    m = const.mindex[:, None] - const.mindex[None, :] + 2 * const.MMAX
+    l = (
+        dod.valid_x_coords[:, None]
+        - dod.valid_x_coords[None, :]
+        + 2 * dod.max_diffraction_order_x
+    )
+    m = (
+        dod.valid_y_coords[:, None]
+        - dod.valid_y_coords[None, :]
+        + 2 * dod.max_diffraction_order_y
+    )
     if polar == "X":
         D = eps[l, m] * const.k**2 - const.i_complex * eta[l, m] * kxplus[None, :]
     elif polar == "Y":
         D = eps[l, m] * const.k**2 - const.i_complex * zeta[l, m] * kyplus[None, :]
-    D[xp.arange(const.Nrange), xp.arange(const.Nrange)] -= kxy2
+    D[
+        xp.arange(dod.num_valid_diffraction_orders),
+        xp.arange(dod.num_valid_diffraction_orders),
+    ] -= kxy2
 
     # eigenvalues and eigenvectors
     # w, br1 = xp.linalg.eig(D) # cupy is not compatible with linalg_eig
     w, br1 = linalg_eig(D)
     al1 = xp.sqrt(w)
     Cjp = xp.linalg.solve(br1, br2)  # Cjp = np.linalg.inv(br1) @ br2
-    new_sigma = calc_sigma(polar, kxplus, kyplus, sigma)
+    new_sigma = calc_sigma(polar, dod, kxplus, kyplus, sigma)
 
     B1 = const.i_complex * (
         const.k * br1
-        - xp.outer(kxplus if polar == "X" else kyplus, xp.ones(const.Nrange))
+        - xp.outer(
+            kxplus if polar == "X" else kyplus,
+            xp.ones(dod.num_valid_diffraction_orders),
+        )
         / const.k
         * new_sigma
         @ br1
