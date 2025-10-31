@@ -1,51 +1,27 @@
 import cupy as cp
 from elitho import const, descriptors
-
-
-def center_slice(center: int, size: int) -> slice:
-    half = size // 2
-    start = center - half
-    end = start + size
-    return slice(start, end)
-
-
-def refine_mask_pattern(mask: "xp.ndarray", scale_x: int, scale_y: int) -> "xp.ndarray":
-    xp = cp.get_array_module(mask)
-    refined_pattern = xp.kron(mask, xp.ones((scale_x, scale_y))).astype(xp.complex128)
-    return refined_pattern
-
-
-def extract_central_region(fmap: "xp.ndarray", ew: int, eh: int) -> "xp.ndarray":
-    w, h = fmap.shape
-    cx = w // 2
-    cy = h // 2
-    extracted_famp = fmap[
-        center_slice(cx, ew),
-        center_slice(cy, eh),
-    ]
-    return extracted_famp
+from elitho.utils import image_processing as ip
 
 
 def mask(
     mask_pattern: "xp.ndarray",
-    ampta: complex,
-    ampvc: complex,
+    ampta: complex = 1.0,
+    ampvc: complex = 0.0,
     extraction_size_x: int = None,
     extraction_size_y: int = None,
+    refinement_factor_x: int = 1,
+    refinement_factor_y: int = 1,
 ) -> "xp.ndarray":
     xp = cp.get_array_module(mask_pattern)
     # refine mask pattern
-    refined_mask = refine_mask_pattern(
-        mask_pattern, const.MASK_REFINEMENT_FACTOR_X, const.MASK_REFINEMENT_FACTOR_Y
-    )
+    refined_mask = ip.refine(mask_pattern, refinement_factor_x, refinement_factor_y)
     # create amplitude pattern
     pattern = xp.where(refined_mask, ampta, ampvc).astype(xp.complex128)
-    # FFT
-    w, h = pattern.shape
-    fft_map = xp.fft.fftshift(xp.fft.fft2(pattern)) / (w * h)
+    # FFT with scaling
+    fft_map = xp.fft.fftshift(xp.fft.fft2(pattern, norm="forward"))
     # extract central region
     if extraction_size_x is not None and extraction_size_y is not None:
-        fft_map = extract_central_region(
+        fft_map = ip.extract_central_region(
             fft_map,
             extraction_size_x,
             extraction_size_y,
@@ -81,6 +57,7 @@ def coefficients(
             extraction_size_x=dod.num_diffraction_orders_x_expanded,
             extraction_size_y=dod.num_diffraction_orders_y_expanded,
         )
+        # return
         # sigma
         sigma = mask(
             mask_pattern=mask_pattern,

@@ -1,5 +1,4 @@
 from functools import cached_property
-import numpy as np
 from elitho import const
 
 
@@ -10,7 +9,7 @@ class DiffractionOrderDescriptor:
     based on NA, sampling points, pixel size, and wavelength.
     """
 
-    def __init__(self, cutoff_factor: float, valid_region_fn: "callable") -> None:
+    def __init__(self, cutoff_factor: float) -> None:
         """
         Initialize the descriptor.
 
@@ -22,17 +21,6 @@ class DiffractionOrderDescriptor:
             Function defining valid diffraction order region (e.g., ellipse, rounded_diamond).
         """
         self._cutoff_factor = cutoff_factor
-        self._valid_region_fn = valid_region_fn
-
-        from elitho import diffraction_order
-
-        self._valid_x_coords, self._valid_y_coords = (
-            diffraction_order.valid_coordinates(
-                self.max_diffraction_order_x,
-                self.max_diffraction_order_y,
-                self._valid_region_fn,
-            )
-        )
 
     @cached_property
     def spatial_freq_cutoff_x(self) -> float:
@@ -129,39 +117,3 @@ class DiffractionOrderDescriptor:
             Expanded diffraction orders along y: 4*max_diffraction_order_y + 1
         """
         return 4 * self.max_diffraction_order_y + 1
-
-    @cached_property
-    def valid_x_coords(self) -> np.ndarray:
-        """
-        Meshgrid of valid diffraction order x-coordinates.
-
-        Returns
-        -------
-        np.ndarray
-            Array of valid diffraction order x-coordinates.
-        """
-        return self._valid_x_coords
-
-    @cached_property
-    def valid_y_coords(self) -> np.ndarray:
-        """
-        Meshgrid of valid diffraction order y-coordinates.
-
-        Returns
-        -------
-        np.ndarray
-            Array of valid diffraction order y-coordinates.
-        """
-        return self._valid_y_coords
-
-    @cached_property
-    def num_valid_diffraction_orders(self) -> int:
-        """
-        Number of valid diffraction orders based on the defined region.
-
-        Returns
-        -------
-        int
-            Count of valid diffraction orders.
-        """
-        return len(self._valid_x_coords)

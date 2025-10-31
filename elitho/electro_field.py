@@ -6,8 +6,6 @@ def electro_field(
     SDIV: np.ndarray,
     l0s: np.ndarray,
     m0s: np.ndarray,
-    nsx: int,
-    nsy: int,
     ncut: int,
     sx0: float,
     sy0: float,
@@ -15,15 +13,15 @@ def electro_field(
     minput: np.ndarray,
     ampxx: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    Ex0m = np.zeros((SDIV[nsx, nsy], ncut), dtype=complex)
+    Ex0m = np.zeros((SDIV, ncut), dtype=complex)
     Ey0m = np.zeros_like(Ex0m)
     Ez0m = np.zeros_like(Ex0m)
 
-    for isd in range(SDIV[nsx, nsy]):
-        kx = sx0 + 2.0 * const.pi / const.dx * l0s[nsx][nsy][isd]
-        ky = sy0 + 2.0 * const.pi / const.dy * m0s[nsx][nsy][isd]
-        ls = l0s[nsx][nsy][isd] + const.lsmaxX
-        ms = m0s[nsx][nsy][isd] + const.lsmaxY
+    for isd in range(SDIV):
+        kx = sx0 + 2.0 * const.pi / const.dx * l0s[isd]
+        ky = sy0 + 2.0 * const.pi / const.dy * m0s[isd]
+        ls = l0s[isd] + const.lsmaxX
+        ms = m0s[isd] + const.lsmaxY
         for i in range(ncut):
             kxplus = kx + 2 * const.pi * linput[i] / const.dx
             kyplus = ky + 2 * const.pi * minput[i] / const.dy
@@ -32,7 +30,7 @@ def electro_field(
             ip = linput[i] + const.lpmaxX
             jp = minput[i] + const.lpmaxY
 
-            Ax_val = ampxx[ls, ms, ip, jp] / np.sqrt(const.k * const.k - kx * kx)
+            Ax_val = ampxx[ls, ms, ip, jp] / np.sqrt(const.k**2 - kx**2)
             Ay_val = 0
 
             EAx = const.i_complex * const.k * Ax_val - const.i_complex / const.k * (

@@ -6,8 +6,10 @@ i_complex = 1j  # 複素単位
 # Default parameters
 MX = 4  # X magnification
 MY = 4  # Y magnification
-NDIVX = 2048  # X pitch (nm)
-NDIVY = 2048  # Y pitch (nm)
+# NDIVX = 2048  # X pitch (nm)
+# NDIVY = 2048  # Y pitch (nm)
+NDIVX = 512  # X pitch (nm)
+NDIVY = 512  # Y pitch (nm)
 dx = NDIVX
 dy = NDIVY
 XDIV = NDIVX // MX
@@ -65,8 +67,6 @@ epsilon_si_o2 = n_si_o2**2
 
 
 # Calculation parameters
-delta = 1.0
-
 sigmadiv = 2.0  # division angle of the source (degree)
 ndivs = max(1, int(180.0 / pi * wavelength / dx / sigmadiv))
 lsmaxX = int(NA * dx / MX / wavelength + 1)
@@ -77,7 +77,6 @@ nsourceX = 2 * lsmaxX + 1
 nsourceY = 2 * lsmaxY + 1
 noutX = 2 * lpmaxX + 1
 noutY = 2 * lpmaxY + 1
-
 nsourceXL = 2 * lsmaxX + 10
 nsourceYL = 2 * lsmaxY + 10
 noutXL = 2 * lpmaxX + 10
@@ -95,6 +94,7 @@ absorber_layer_thicknesses = [dabst]
 
 
 # TODO: delete this
+# delta = 1.0
 # FDIVX = int(dx / delta + 0.000001)
 # FDIVY = int(dy / delta + 0.000001)
 # cexpX = np.exp(-2j * np.pi * np.arange(FDIVX + 1) / FDIVX)
