@@ -131,3 +131,46 @@ def diffraction_amplitude(
     Ax = calc_Ax(FG, kx0, ky0, doc)
 
     return Ax
+
+
+def zero_order_amplitude(
+    polar: str,
+    dod,  # dod_wide
+    doc,  # doc_narrow
+) -> tuple[complex, complex, complex]:
+    import numpy as np
+
+    mask_vacuum = np.zeros((const.NDIVX, const.NDIVY), dtype=np.float32)
+    Ax_vacuum = diffraction_amplitude(
+        polar, mask_vacuum, const.kx0, const.ky0, dod, doc
+    )
+    # mask with vacuum only
+    mask_absorber = np.ones((const.NDIVX, const.NDIVY), dtype=np.float32)
+    Ax_absorber = diffraction_amplitude(
+        polar, mask_absorber, const.kx0, const.ky0, dod, doc
+    )
+
+    vcxx = np.zeros((const.nsourceX, const.nsourceY), dtype=np.complex128)
+    abxx = np.zeros_like(vcxx)
+    for ls in range(-const.lsmaxX, const.lsmaxX + 1):
+        for ms in range(-const.lsmaxY, const.lsmaxY + 1):
+            if ((ls * const.MX / const.dx) ** 2 + (ms * const.MY / const.dy) ** 2) <= (
+                const.NA / const.wavelength
+            ) ** 2:
+                for i in range(doc.num_valid_diffraction_orders):
+                    if doc.valid_x_coords[i] == ls and doc.valid_y_coords[i] == ms:
+                        vcxx[ls + const.lsmaxX, ms + const.lsmaxY] = Ax_vacuum[
+                            ls + const.lsmaxX
+                        ][ms + const.lsmaxY][i]
+                        abxx[ls + const.lsmaxX, ms + const.lsmaxY] = Ax_absorber[
+                            ls + const.lsmaxX
+                        ][ms + const.lsmaxY][i]
+
+    phasexx = np.zeros((const.nsourceX, const.nsourceY), dtype=np.complex128)
+    for x in range(const.nsourceX):
+        for y in range(const.nsourceY):
+            phasexx[x, y] = vcxx[x, y] / np.abs(vcxx[x, y])
+
+    amp_absorber = abxx[const.lsmaxX, const.lsmaxY]
+    amp_vacuum = vcxx[const.lsmaxX, const.lsmaxY]
+    return amp_absorber, amp_vacuum, phasexx[const.lsmaxX, const.lsmaxY]

@@ -85,7 +85,7 @@ def intensity_by_abbe_source(
 
 def intensity(mask2d: np.ndarray) -> np.ndarray:
     l0s, m0s, SDIV = abbe_source()
-    SDIVMAX = np.max(SDIV)
+    # SDIVMAX = np.max(SDIV)
     SDIVSUM = np.sum(SDIV)
 
     dod = descriptors.DiffractionOrderDescriptor(6.0)
@@ -141,73 +141,6 @@ def intensity(mask2d: np.ndarray) -> np.ndarray:
 
     intensity_map = intensity_total / SDIVSUM
     return intensity_map
-
-    # # ---- FFT & isum更新 ----
-    # for isd in range(SDIV[nsx, nsy]):
-    #     fnx = np.zeros((const.XDIV, const.XDIV), dtype=complex)
-    #     fny = np.zeros_like(fnx)
-    #     fnz = np.zeros_like(fnx)
-
-    #     for n in range(ncut):
-    #         # 他の実装の時との違いはkxn, kynだけ
-    #         kxn = (
-    #             2.0 * const.pi / const.dx * nsx / const.ndivs
-    #             + 2.0 * const.pi / const.dx * l0s[nsx][nsy][isd]
-    #             + 2.0 * const.pi * linput[n] / const.dx
-    #         )
-    #         kyn = (
-    #             2.0 * const.pi / const.dy * nsy / const.ndivs
-    #             + 2.0 * const.pi / const.dy * m0s[nsx][nsy][isd]
-    #             + 2.0 * const.pi * minput[n] / const.dy
-    #         )
-
-    #         if (const.MX**2 * kxn**2 + const.MY**2 * kyn**2) <= (
-    #             const.NA * const.k
-    #         ) ** 2:
-    #             # Calculate phase
-    #             phase = np.exp(
-    #                 1j
-    #                 * ((kxn + const.kx0) ** 2 + (kyn + const.ky0) ** 2)
-    #                 / 2.0
-    #                 / const.k
-    #                 * const.z0
-    #                 + 1j
-    #                 * (const.MX**2 * kxn**2 + const.MY**2 * kyn**2)
-    #                 / 2.0
-    #                 / const.k
-    #                 * const.z
-    #             )
-    #             # Calculate electric field components
-    #             fx = Ex0m[isd, n] * phase
-    #             fy = Ey0m[isd, n] * phase
-    #             fz = Ez0m[isd, n] * phase
-
-    #             # Map to FFT grid
-    #             ix = linput[n]
-    #             iy = minput[n]
-    #             px = (ix + const.XDIV) % const.XDIV
-    #             py = (iy + const.YDIV) % const.YDIV
-
-    #             fnx[px, py] = fx
-    #             fny[px, py] = fy
-    #             fnz[px, py] = fz
-
-    #     # Inverse FFT without scaling
-    #     fnx_ifft = np.fft.ifft2(fnx, norm="forward")
-    #     fny_ifft = np.fft.ifft2(fny, norm="forward")
-    #     fnz_ifft = np.fft.ifft2(fnz, norm="forward")
-
-    #     # Calculate intensity
-    #     intensity = (
-    #         np.abs(fnx_ifft) ** 2
-    #         + np.abs(fny_ifft) ** 2
-    #         + np.abs(fnz_ifft) ** 2
-    #     )
-
-    # isum[nsx, nsy, :, :, isd] = intensity
-
-    # intensity_map = isum.sum(axis=(0, 1, 4)) / SDIVSUM
-    # return intensity_map
 
 
 def main():
