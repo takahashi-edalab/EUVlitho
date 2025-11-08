@@ -37,7 +37,7 @@ def calc_Ax(
 
 
 def diffraction_amplitude(
-    polar: str,
+    polar: const.PolarizationDirection,
     mask2d: "xp.ndarray",
     kx0: float,
     ky0: float,
@@ -61,16 +61,18 @@ def diffraction_amplitude(
     )
 
     # --- 4. calc initial B matrix ---
-    if polar == "X":
+    if polar == const.PolarizationDirection.X:
         Bru = xp.diag(
             const.i_complex * const.k
             - const.i_complex / const.k / const.epsilon_ru * kxplus**2
         )
-    else:
+    elif polar == const.PolarizationDirection.Y:
         Bru = xp.diag(
             const.i_complex * const.k
             - const.i_complex / const.k / const.epsilon_ru * kyplus**2
         )
+    else:
+        raise ValueError("Invalid polarization direction")
 
     B = Bru
     al = xp.sqrt(const.k**2 * const.epsilon_ru - kxy2)

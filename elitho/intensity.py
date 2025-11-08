@@ -84,7 +84,9 @@ def intensity_by_abbe_source(
 
 
 def intensity(
-    mask2d: np.ndarray, polar: str = "X", is_high_na: bool = False
+    mask2d: np.ndarray,
+    polar: const.PolarizationDirection = const.PolarizationDirection.X,
+    is_high_na: bool = False,
 ) -> np.ndarray:
     l0s, m0s, SDIV = abbe_source()
     # SDIVMAX = np.max(SDIV)
@@ -105,7 +107,7 @@ def intensity(
         for nsy in range(const.ndivs):
             sx0 = 2.0 * const.pi / const.dx * nsx / const.ndivs + const.kx0
             sy0 = 2.0 * const.pi / const.dy * nsy / const.ndivs + const.ky0
-            Ax = diffraction_amplitude("X", mask2d, sx0, sy0, dod, doc)
+            Ax = diffraction_amplitude(polar, mask2d, sx0, sy0, dod, doc)
             ampxx = na_filter_amplitude_map(Ax, doc)
             Ex0m, Ey0m, Ez0m = electro_field(
                 polar,

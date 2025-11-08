@@ -12,7 +12,7 @@ def diag_mat(vals: "xp.ndarray") -> "sparse.csr_matrix":
 
 
 def transfer_matrix(
-    polar: str,
+    polar: const.PolarizationDirection,
     num_valid_diffraction_orders: int,
     kxplus: "xp.ndarray",
     kyplus: "xp.ndarray",
@@ -30,15 +30,17 @@ def transfer_matrix(
     Cjp_vals = xp.ones(num_valid_diffraction_orders, dtype=xp.complex128)
 
     # Build Cj depending on polarization (diagonal entries)
-    if polar == "X":
+    if polar == const.PolarizationDirection.X:
         Cj_vals = (k - (kxplus**2) / k / next_epsilon) / (
             k - (kxplus**2) / k / current_epsilon
         )
 
-    else:  # 'Y'
+    elif polar == const.PolarizationDirection.Y:
         Cj_vals = (k - (kyplus**2) / k / next_epsilon) / (
             k - (kyplus**2) / k / current_epsilon
         )
+    else:
+        raise ValueError("Invalid polarization direction")
 
     gamma = xp.exp(const.i_complex * current_alpha * current_thickness)
     # element-wise arrays for each diag

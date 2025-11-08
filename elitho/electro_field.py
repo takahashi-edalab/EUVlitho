@@ -77,7 +77,7 @@ def standard_na_electro_field(kxplus, kyplus, Ax_val, Ay_val):
 
 
 def electro_field(
-    polar: str,
+    polar: const.PolarizationDirection,
     is_high_na: bool,
     nsx: int,
     nsy: int,
@@ -104,10 +104,10 @@ def electro_field(
             ip = linput[i] + const.lpmaxX
             jp = minput[i] + const.lpmaxY
 
-            if polar == "X":
+            if polar == const.PolarizationDirection.X:
                 Ax_val = ampxx[ls, ms, ip, jp] / np.sqrt(const.k**2 - kx**2)
                 Ay_val = 0
-            elif polar == "Y":
+            elif polar == const.PolarizationDirection.Y:
                 Ax_val = 0
                 Ay_val = ampxx[ls, ms, ip, jp] / np.sqrt(const.k**2 - ky**2)
             else:
