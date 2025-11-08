@@ -1,4 +1,6 @@
 import numpy as np
+from enum import Enum
+
 
 pi = np.pi
 i_complex = 1j  # 複素単位
@@ -23,14 +25,30 @@ k = 2.0 * pi / wavelength
 theta0 = -6.0  # chief ray angle (degree)
 azimuth = 0.0  # azimuthal angle (degree)
 phi0 = 90.0 - azimuth
-NA = 0.33
+
+
+# NA = 0.33
+NA = 0.55
 kx0 = k * np.sin(np.deg2rad(theta0)) * np.cos(np.deg2rad(phi0))
 ky0 = k * np.sin(np.deg2rad(theta0)) * np.sin(np.deg2rad(phi0))
 
 
 # optical type
 mesh = 0.1
-optical_type = 2  # 0: circular, 1: annular, 2: dipole
+
+
+class PolarizationDirection(Enum):
+    X = 0
+    Y = 1
+
+
+class IlluminationType(Enum):
+    CIRCULAR = 0
+    ANNULAR = 1
+    DIPOLE = 2
+
+
+illumination_type = IlluminationType.DIPOLE
 sigma1 = 0.9  # outer sigma
 sigma2 = 0.55  # inner sigma
 openangle = 90.0  # opening angle for dipole illumination
@@ -91,35 +109,3 @@ z0 = dabst + 42.0  # reflection point inside ML from the top of the absorber
 
 absorption_amplitudes = [nta**2]
 absorber_layer_thicknesses = [dabst]
-
-
-# TODO: delete this
-# delta = 1.0
-# FDIVX = int(dx / delta + 0.000001)
-# FDIVY = int(dy / delta + 0.000001)
-# cexpX = np.exp(-2j * np.pi * np.arange(FDIVX + 1) / FDIVX)
-# cexpY = np.exp(-2j * np.pi * np.arange(FDIVY + 1) / FDIVY)
-
-
-# cutx = NA / MX * 6.0
-# cuty = NA / MY * 6.0
-# LMAX = int(cutx * dx / wavelength)  # L -> x
-# MMAX = int(cuty * dy / wavelength)  # M -> y
-# Lrange = 2 * LMAX + 1
-# Mrange = 2 * MMAX + 1
-# Lrange2 = 4 * LMAX + 1  # x
-# Mrange2 = 4 * MMAX + 1  # y
-# from elitho import diffraction_order
-
-# lindex, mindex = diffraction_order.valid_coordinates(
-#     LMAX, MMAX, valid_region_fn=diffraction_order.rounded_diamond
-# )
-# Nrange = len(lindex)
-# Nrange2 = Nrange * 2
-
-
-# NABS = 1  # number of the absorber layers
-# eabs = np.zeros(100, dtype=complex)  # 各層の複素誘電率
-# eabs[0] = nta**2  # 吸収体
-# dabs = np.zeros(100)
-# dabs[0] = dabst

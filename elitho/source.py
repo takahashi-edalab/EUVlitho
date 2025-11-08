@@ -25,18 +25,18 @@ def abbe_source() -> tuple[list, list, np.ndarray]:
                     skyo = sky * const.MY
 
                     condition = False
-                    if const.optical_type == 0:  # circular
+                    if const.illumination_type == const.IlluminationType.CIRCULAR:
                         condition = (skxo**2 + skyo**2) <= (
                             const.k * const.NA * const.sigma1
                         ) ** 2
-                    elif const.optical_type == 1:  # annular
+                    elif const.illumination_type == const.IlluminationType.ANNULAR:
                         r = np.sqrt(skxo**2 + skyo**2)
                         condition = (
                             const.k * const.NA * const.sigma2
                             <= r
                             <= const.k * const.NA * const.sigma1
                         )
-                    elif const.optical_type == 2:  # dipole
+                    elif const.illumination_type == const.IlluminationType.DIPOLE:
                         r = np.sqrt(skxo**2 + skyo**2)
                         angle_condition = abs(skyo) <= abs(skxo) * np.tan(
                             const.pi * const.openangle / 180.0 / 2.0
@@ -53,14 +53,6 @@ def abbe_source() -> tuple[list, list, np.ndarray]:
                         SDIV[nsx][nsy] += 1
 
     return l0s, m0s, SDIV
-
-
-# condition = (
-#     (optical_type == 3)
-#     and (np.sqrt(skxo * skxo + skyo * skyo) <= k * NA * sigma1)
-#     and (np.sqrt(skxo * skxo + skyo * skyo) >= k * NA * sigma2)
-#     and (abs(skxo) <= abs(skyo) * np.tan(np.pi * openangle / 180.0 / 2.0))
-# )
 
 
 def uniform_k_source() -> tuple[list, list, int]:
@@ -80,18 +72,18 @@ def uniform_k_source() -> tuple[list, list, int]:
             skyo = sky * const.MY
 
             condition = False
-            if const.optical_type == 0:  # circular
+            if const.illumination_type == const.IlluminationType.CIRCULAR:
                 condition = (skxo**2 + skyo**2) <= (
                     const.k * const.NA * const.sigma1
                 ) ** 2
-            elif const.optical_type == 1:  # annular
+            elif const.illumination_type == const.IlluminationType.ANNULAR:
                 r = np.sqrt(skxo**2 + skyo**2)
                 condition = (
                     const.k * const.NA * const.sigma2
                     <= r
                     <= const.k * const.NA * const.sigma1
                 )
-            elif const.optical_type == 2:  # dipole
+            elif const.illumination_type == const.IlluminationType.DIPOLE:
                 r = np.sqrt(skxo**2 + skyo**2)
                 angle_condition = abs(skyo) <= abs(skxo) * np.tan(
                     const.pi * const.openangle / 180.0 / 2.0
@@ -126,16 +118,16 @@ def uniform_k_source_fast():
     skxo = skx * const.MX
     skyo = sky * const.MY
 
-    if const.optical_type == 0:  # circular
+    if const.illumination_type == const.IlluminationType.CIRCULAR:
         mask = skxo**2 + skyo**2 <= (const.k * const.NA * const.sigma1) ** 2
 
-    elif const.optical_type == 1:  # annular
+    elif const.illumination_type == const.IlluminationType.ANNULAR:
         r = np.sqrt(skxo**2 + skyo**2)
         mask = (const.k * const.NA * const.sigma2 <= r) & (
             r <= const.k * const.NA * const.sigma1
         )
 
-    elif const.optical_type == 2:  # dipole
+    elif const.illumination_type == const.IlluminationType.DIPOLE:
         r = np.sqrt(skxo**2 + skyo**2)
         angle_cond = np.abs(skyo) <= np.abs(skxo) * np.tan(
             const.pi * const.openangle / 180.0 / 2.0
