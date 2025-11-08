@@ -55,53 +55,7 @@ def abbe_source() -> tuple[list, list, np.ndarray]:
     return l0s, m0s, SDIV
 
 
-def uniform_k_source() -> tuple[list, list, int]:
-    kmesh = const.k * const.mesh * (const.pi / 180.0)
-    skangx = const.k * const.NA / const.MX * const.sigma1
-    skangy = const.k * const.NA / const.MY * const.sigma1
-    l0max = int(skangx / kmesh + 1)
-    m0max = int(skangy / kmesh + 1)
-
-    dkx = []
-    dky = []
-    for l in range(-l0max, l0max + 1):
-        for m in range(-m0max, m0max + 1):
-            skx = l * kmesh
-            sky = m * kmesh
-            skxo = skx * const.MX
-            skyo = sky * const.MY
-
-            condition = False
-            if const.illumination_type == const.IlluminationType.CIRCULAR:
-                condition = (skxo**2 + skyo**2) <= (
-                    const.k * const.NA * const.sigma1
-                ) ** 2
-            elif const.illumination_type == const.IlluminationType.ANNULAR:
-                r = np.sqrt(skxo**2 + skyo**2)
-                condition = (
-                    const.k * const.NA * const.sigma2
-                    <= r
-                    <= const.k * const.NA * const.sigma1
-                )
-            elif const.illumination_type == const.IlluminationType.DIPOLE:
-                r = np.sqrt(skxo**2 + skyo**2)
-                angle_condition = abs(skyo) <= abs(skxo) * np.tan(
-                    const.pi * const.openangle / 180.0 / 2.0
-                )
-                condition = (
-                    const.k * const.NA * const.sigma2
-                    <= r
-                    <= const.k * const.NA * const.sigma1
-                ) and angle_condition
-
-            if condition:
-                dkx.append(skx)
-                dky.append(sky)
-
-    return dkx, dky, len(dkx)
-
-
-def uniform_k_source_fast():
+def uniform_k_source():
     kmesh = const.k * const.mesh * (const.pi / 180.0)
     skangx = const.k * const.NA / const.MX * const.sigma1
     skangy = const.k * const.NA / const.MY * const.sigma1
