@@ -51,8 +51,6 @@ class DiffractionOrderCoordinate:
         max_diffraction_order_y: int,
         valid_region_fn: "callable",
     ):
-        # self._max_diffraction_order_x = max_diffraction_order_x
-        # self._max_diffraction_order_y = max_diffraction_order_y
         self._valid_region_fn = valid_region_fn
         self._valid_x_coords, self._valid_y_coords = valid_coordinates(
             max_diffraction_order_x,

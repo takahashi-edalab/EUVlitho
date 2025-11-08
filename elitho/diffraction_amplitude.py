@@ -49,12 +49,6 @@ def diffraction_amplitude(
     epsN, etaN, zetaN, sigmaN = fourier.coefficients(
         mask2d, const.absorption_amplitudes, dod
     )
-    # import numpy as np
-
-    # np.save("epsN.npy", epsN)
-    # np.save("etaN.npy", etaN)
-    # np.save("zetaN.npy", zetaN)
-    # np.save("sigmaN.npy", sigmaN)
 
     # --- 2. kxplus, kyplus, kxy2, klm
     kxplus = kx0 + 2 * const.pi * xp.array(doc.valid_x_coords) / const.dx
@@ -65,10 +59,6 @@ def diffraction_amplitude(
     U1U, U1B = multilayer.multilayer_transfer_matrix(
         polar, doc.num_valid_diffraction_orders, kxplus, kyplus, kxy2
     )
-
-    # np.save("U1U.npy", U1U)
-    # np.save("U1B.npy", U1B)
-    # return
 
     # --- 4. calc initial B matrix ---
     if polar == "X":
@@ -107,12 +97,6 @@ def diffraction_amplitude(
             U1U,
             U1B,
         )
-
-    # np.save("U1U.npy", U1U)  # 異なる
-    # np.save("U1B.npy", U1B)
-    # np.save("al.npy", al)
-    # np.save("br.npy", br)
-    # return
 
     # --- 5. calc Ax ---
     klm = xp.sqrt(const.k**2 - kxy2)
