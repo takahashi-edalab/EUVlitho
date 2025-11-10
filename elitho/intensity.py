@@ -151,6 +151,67 @@ def intensity(
     return intensity_map
 
 
+def stcc_intensity(
+    mask: np.ndarray, polar: const.PolarizationDirection = const.PolarizationDirection.X
+) -> np.ndarray:
+    from elitho import (
+        diffraction_amplitude,
+        descriptors,
+        diffraction_order,
+        source,
+    )
+    from elitho.pupil import find_valid_pupil_points
+
+    dod_narrow = descriptors.DiffractionOrderDescriptor(1.5)
+    dod_wide = descriptors.DiffractionOrderDescriptor(6.0)
+    doc_narrow = diffraction_order.DiffractionOrderCoordinate(
+        dod_narrow.max_diffraction_order_x,
+        dod_narrow.max_diffraction_order_y,
+        diffraction_order.ellipse,
+    )
+    doc_wide = diffraction_order.DiffractionOrderCoordinate(
+        dod_wide.max_diffraction_order_x,
+        dod_wide.max_diffraction_order_y,
+        diffraction_order.rounded_diamond,
+    )
+    linput, minput, xinput, n_input = find_valid_pupil_points(
+        doc_wide.num_valid_diffraction_orders
+    )
+
+    dkx, dky, SDIV = source.uniform_k_source()
+    amp_absorber, amp_vacuum, phasexx = diffraction_amplitude.zero_order_amplitude(
+        polar, dod_wide, doc_narrow
+    )
+
+    hfpattern = mask * (amp_absorber - amp_vacuum) + amp_vacuum
+    # fft with scaling
+    fft_mask = np.fft.fft2(hfpattern, norm="forward")
+    # reshaep
+    fmask = np.zeros((const.noutX, const.noutY), dtype=np.complex128)
+    for i in range(const.noutX):
+        l = (i - const.lpmaxX + const.NDIVX) % const.NDIVX
+        for j in range(const.noutY):
+            m = (j - const.lpmaxY + const.NDIVY) % const.NDIVY
+            fmask[i, j] = fft_mask[l, m]
+
+    fampxx = np.zeros((const.noutX, const.noutY), dtype=np.complex128)
+    for ip in range(const.noutX):
+        for jp in range(const.noutY):
+            kxp = 2.0 * np.pi * (ip - const.lpmaxX) / const.dx
+            kyp = 2.0 * np.pi * (jp - const.lpmaxY) / const.dy
+            phasesp = np.exp(
+                -const.i_complex
+                * (const.kx0 * kxp + kxp**2 / 2 + const.ky0 * kyp + kyp**2 / 2)
+                / (const.k * const.z0)
+            )
+            fampxx[ip, jp] = fmask[ip, jp] * phasesp
+
+    fampxx /= phasexx
+
+    intensity = np.zeros((const.XDIV, const.XDIV))
+    return intensity
+
+
 def main():
     import time
     from elitho import use_backend, get_backend

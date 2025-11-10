@@ -87,3 +87,29 @@ def find_valid_pupil_points(
                 xinput[n_pupil_points] = n_sources
                 n_pupil_points += 1
     return linput, minput, xinput, n_pupil_points
+
+
+class PupilCoordinates:
+    def __init__(self, nrange):
+        (
+            self._linput,
+            self._minput,
+            self._xinput,
+            self._n_coordinates,
+        ) = find_valid_pupil_points(nrange)
+
+    @property
+    def linput(self) -> np.ndarray:
+        return self._linput
+
+    @property
+    def minput(self) -> np.ndarray:
+        return self._minput
+
+    @property
+    def xinput(self) -> np.ndarray:
+        return self._xinput
+
+    @property
+    def n_coordinates(self) -> int:
+        return self._n_coordinates

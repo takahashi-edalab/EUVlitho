@@ -48,6 +48,11 @@ class IlluminationType(Enum):
     DIPOLE = 2
 
 
+class SimulationMode(Enum):
+    FAST = 1
+    PRECISE = 2
+
+
 illumination_type = IlluminationType.DIPOLE
 sigma1 = 0.9  # outer sigma
 sigma2 = 0.55  # inner sigma
