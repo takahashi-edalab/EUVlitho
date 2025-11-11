@@ -91,8 +91,18 @@ def uniform_k_source():
             & (r <= const.k * const.NA * const.sigma1)
             & angle_cond
         )
+    else:
+        raise ValueError("Invalid illumination type")
 
     dkx = skx[mask].tolist()
     dky = sky[mask].tolist()
 
     return dkx, dky, len(dkx)
+
+
+class UniformKSource:
+    def __init__(self):
+        self.dkx, self.dky, self.SDIV = uniform_k_source()
+
+    def __iter__(self):
+        return zip(self.dkx, self.dky)
