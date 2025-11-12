@@ -1,7 +1,6 @@
 import numpy as np
-from elitho import const, pupil, descriptors, diffraction_order
+from elitho import const, pupil, descriptors, diffraction_order, source
 from elitho.diffraction_amplitude import diffraction_amplitude
-from elitho.source import abbe_source
 from elitho.electro_field import electro_field
 
 
@@ -30,24 +29,29 @@ def na_filter_amplitude_map(
 
 
 def intensity_by_abbe_source(
-    ncut: int,
     Ex0m: np.ndarray,
     Ey0m: np.ndarray,
     Ez0m: np.ndarray,
     offset_x: float,
     offset_y: float,
-    linput: np.ndarray,
-    minput: np.ndarray,
+    pupil_coords: "pupil.PupilCoordinates",
+    is_high_na: bool = False,
+    defocus: float = 0.0,
 ) -> np.ndarray:
     # ---- FFT & isum更新 ----
     fnx = np.zeros((const.XDIV, const.XDIV), dtype=complex)
     fny = np.zeros_like(fnx)
     fnz = np.zeros_like(fnx)
-    for n in range(ncut):
-        kxn = offset_x + 2.0 * const.pi * linput[n] / const.dx
-        kyn = offset_y + 2.0 * const.pi * minput[n] / const.dy
-
-        if (const.MX**2 * kxn**2 + const.MY**2 * kyn**2) <= (const.NA * const.k) ** 2:
+    for n in range(pupil_coords.n_coordinates):
+        kxn = offset_x + 2.0 * const.pi * pupil_coords.linput[n] / const.dx
+        kyn = offset_y + 2.0 * const.pi * pupil_coords.minput[n] / const.dy
+        p2 = const.MX**2 * kxn**2 + const.MY**2 * kyn**2
+        if all(
+            [
+                (const.NA * const.k * const.co) ** 2 <= p2 if is_high_na else True,
+                p2 <= (const.NA * const.k) ** 2,
+            ]
+        ):
             # Calculate phase
             phase = np.exp(
                 1j
@@ -59,15 +63,15 @@ def intensity_by_abbe_source(
                 * (const.MX**2 * kxn**2 + const.MY**2 * kyn**2)
                 / 2.0
                 / const.k
-                * const.z
+                * defocus
             )
             # Calculate electric field components
             fx = Ex0m[n] * phase
             fy = Ey0m[n] * phase
             fz = Ez0m[n] * phase
             # Map to FFT grid
-            ix = linput[n]
-            iy = minput[n]
+            ix = pupil_coords.linput[n]
+            iy = pupil_coords.minput[n]
             px = (ix + const.XDIV) % const.XDIV
             py = (iy + const.YDIV) % const.YDIV
             fnx[px, py] = fx
@@ -85,131 +89,74 @@ def intensity_by_abbe_source(
 
 def intensity(
     mask2d: np.ndarray,
-    polar: const.PolarizationDirection = const.PolarizationDirection.X,
+    polar: const.PolarizationDirection,
+    illumination_type: const.IlluminationType,
+    defocus: float = 0.0,
+    cutoff_factor: float = 6.0,
     is_high_na: bool = False,
 ) -> np.ndarray:
-    l0s, m0s, SDIV = abbe_source()
-    # SDIVMAX = np.max(SDIV)
-    SDIVSUM = np.sum(SDIV)
+    l0s, m0s, SDIV = source.abbe_division_sampling(illumination_type)
+    SDIVSUM = np.sum(list(SDIV.values()))
 
-    dod = descriptors.DiffractionOrderDescriptor(6.0)
+    dod = descriptors.DiffractionOrderDescriptor(cutoff_factor)
     doc = diffraction_order.DiffractionOrderCoordinate(
         dod.max_diffraction_order_x,
         dod.max_diffraction_order_y,
         diffraction_order.rounded_diamond,
     )
-
-    linput, minput, _, ninput = pupil.find_valid_pupil_points(
-        doc.num_valid_diffraction_orders
-    )
+    # ここまで多分OK
     intensity_total = np.zeros((const.XDIV, const.XDIV))
-    for nsx in range(const.ndivs):
-        for nsy in range(const.ndivs):
-            sx0 = 2.0 * const.pi / const.dx * nsx / const.ndivs + const.kx0
-            sy0 = 2.0 * const.pi / const.dy * nsy / const.ndivs + const.ky0
+    for nsx in range(-const.ndivX + 1, const.ndivX):
+        for nsy in range(-const.ndivY + 1, const.ndivY):
+            if SDIV[(nsx, nsy)] == 0:
+                continue
+
+            sx0 = 2.0 * const.pi / const.dx * nsx / const.ndivX + const.kx0
+            sy0 = 2.0 * const.pi / const.dy * nsy / const.ndivY + const.ky0
             Ax = diffraction_amplitude(polar, mask2d, sx0, sy0, dod, doc)
             ampxx = na_filter_amplitude_map(Ax, doc)
+            pupil_coords = pupil.PupilCoordinates(
+                doc.num_valid_diffraction_orders, nsx, nsy
+            )
+
             Ex0m, Ey0m, Ez0m = electro_field(
                 polar,
                 is_high_na,
                 nsx,
                 nsy,
-                SDIV[nsx, nsy],
-                l0s[nsx][nsy],
-                m0s[nsx][nsy],
-                ninput,
+                SDIV[(nsx, nsy)],
+                l0s[(nsx, nsy)],
+                m0s[(nsx, nsy)],
                 sx0,
                 sy0,
-                linput,
-                minput,
+                pupil_coords,
                 ampxx,
             )
 
-            for isd in range(SDIV[nsx, nsy]):
+            for isd in range(SDIV[(nsx, nsy)]):
                 offset_x = (
-                    2.0 * const.pi / const.dx * nsx / const.ndivs
-                    + 2.0 * const.pi / const.dx * l0s[nsx][nsy][isd]
+                    2.0 * const.pi / const.dx * nsx / const.ndivX
+                    + 2.0 * const.pi / const.dx * l0s[(nsx, nsy)][isd]
                 )
                 offset_y = (
-                    2.0 * const.pi / const.dy * nsy / const.ndivs
-                    + 2.0 * const.pi / const.dy * m0s[nsx][nsy][isd]
+                    2.0 * const.pi / const.dy * nsy / const.ndivY
+                    + 2.0 * const.pi / const.dy * m0s[(nsx, nsy)][isd]
                 )
 
                 intensity_by_a_source = intensity_by_abbe_source(
-                    ninput,
                     Ex0m[isd],
                     Ey0m[isd],
                     Ez0m[isd],
                     offset_x,
                     offset_y,
-                    linput,
-                    minput,
+                    pupil_coords,
+                    is_high_na,
+                    defocus,
                 )
                 intensity_total += intensity_by_a_source
 
     intensity_map = intensity_total / SDIVSUM
     return intensity_map
-
-
-def stcc_intensity(
-    mask: np.ndarray, polar: const.PolarizationDirection = const.PolarizationDirection.X
-) -> np.ndarray:
-    from elitho import (
-        diffraction_amplitude,
-        descriptors,
-        diffraction_order,
-        source,
-    )
-    from elitho.pupil import find_valid_pupil_points
-
-    dod_narrow = descriptors.DiffractionOrderDescriptor(1.5)
-    dod_wide = descriptors.DiffractionOrderDescriptor(6.0)
-    doc_narrow = diffraction_order.DiffractionOrderCoordinate(
-        dod_narrow.max_diffraction_order_x,
-        dod_narrow.max_diffraction_order_y,
-        diffraction_order.ellipse,
-    )
-    doc_wide = diffraction_order.DiffractionOrderCoordinate(
-        dod_wide.max_diffraction_order_x,
-        dod_wide.max_diffraction_order_y,
-        diffraction_order.rounded_diamond,
-    )
-    linput, minput, xinput, n_input = find_valid_pupil_points(
-        doc_wide.num_valid_diffraction_orders
-    )
-
-    dkx, dky, SDIV = source.uniform_k_source()
-    amp_absorber, amp_vacuum, phasexx = diffraction_amplitude.zero_order_amplitude(
-        polar, dod_wide, doc_narrow
-    )
-
-    hfpattern = mask * (amp_absorber - amp_vacuum) + amp_vacuum
-    # fft with scaling
-    fft_mask = np.fft.fft2(hfpattern, norm="forward")
-    # reshaep
-    fmask = np.zeros((const.noutX, const.noutY), dtype=np.complex128)
-    for i in range(const.noutX):
-        l = (i - const.lpmaxX + const.NDIVX) % const.NDIVX
-        for j in range(const.noutY):
-            m = (j - const.lpmaxY + const.NDIVY) % const.NDIVY
-            fmask[i, j] = fft_mask[l, m]
-
-    fampxx = np.zeros((const.noutX, const.noutY), dtype=np.complex128)
-    for ip in range(const.noutX):
-        for jp in range(const.noutY):
-            kxp = 2.0 * np.pi * (ip - const.lpmaxX) / const.dx
-            kyp = 2.0 * np.pi * (jp - const.lpmaxY) / const.dy
-            phasesp = np.exp(
-                -const.i_complex
-                * (const.kx0 * kxp + kxp**2 / 2 + const.ky0 * kyp + kyp**2 / 2)
-                / (const.k * const.z0)
-            )
-            fampxx[ip, jp] = fmask[ip, jp] * phasesp
-
-    fampxx /= phasexx
-
-    intensity = np.zeros((const.XDIV, const.XDIV))
-    return intensity
 
 
 def main():

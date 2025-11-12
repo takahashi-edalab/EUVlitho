@@ -41,19 +41,25 @@ def polarization_rotation(k, MX, MY, px, py, sx0, sy0) -> np.ndarray:
 
 def high_na_electro_field(nsx, nsy, Ax_val, Ay_val, linput, minput, l0s, m0s):
     kxn = (
-        (2 * const.pi / const.dx) * (nsx / const.ndivs)
+        (2 * const.pi / const.dx) * (nsx / const.ndivX)
         + (2 * const.pi / const.dx) * l0s
         + (2 * const.pi * linput / const.dx)
     )
     kyn = (
-        (2 * const.pi / const.dy) * (nsy / const.ndivs)
+        (2 * const.pi / const.dy) * (nsy / const.ndivY)
         + (2 * const.pi / const.dy) * m0s
         + (2 * const.pi * minput / const.dy)
     )
     EAx = 0.0
     EAy = 0.0
     EAz = 0.0
-    if (const.MX**2 * kxn**2 + const.MY**2 * kyn**2) <= (const.NA * const.k) ** 2:
+    p2 = const.MX**2 * kxn**2 + const.MY**2 * kyn**2
+    if all(
+        [
+            (const.NA * const.k * const.co) ** 2 <= p2,
+            p2 <= (const.NA * const.k) ** 2,
+        ]
+    ):
         R = polarization_rotation(
             const.k, const.MX, const.MY, kxn, kyn, const.kx0, const.ky0
         )
@@ -84,14 +90,12 @@ def electro_field(
     SDIV: np.ndarray,
     l0s: np.ndarray,
     m0s: np.ndarray,
-    ncut: int,
     sx0: float,
     sy0: float,
-    linput: np.ndarray,
-    minput: np.ndarray,
+    pupil_coords: "pupil.PupilCoordinates",
     ampxx: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    Ex0m = np.zeros((SDIV, ncut), dtype=complex)
+    Ex0m = np.zeros((SDIV, pupil_coords.n_coordinates), dtype=complex)
     Ey0m = np.zeros_like(Ex0m)
     Ez0m = np.zeros_like(Ex0m)
 
@@ -100,9 +104,9 @@ def electro_field(
         ky = sy0 + 2.0 * const.pi / const.dy * m0s[isd]
         ls = l0s[isd] + const.lsmaxX
         ms = m0s[isd] + const.lsmaxY
-        for i in range(ncut):
-            ip = linput[i] + const.lpmaxX
-            jp = minput[i] + const.lpmaxY
+        for i in range(pupil_coords.n_coordinates):
+            ip = pupil_coords.linput[i] + const.lpmaxX
+            jp = pupil_coords.minput[i] + const.lpmaxY
 
             if polar == const.PolarizationDirection.X:
                 Ax_val = ampxx[ls, ms, ip, jp] / np.sqrt(const.k**2 - kx**2)
@@ -115,11 +119,18 @@ def electro_field(
 
             if is_high_na:
                 EAx, EAy, EAz = high_na_electro_field(
-                    nsx, nsy, Ax_val, Ay_val, linput[i], minput[i], l0s[isd], m0s[isd]
+                    nsx,
+                    nsy,
+                    Ax_val,
+                    Ay_val,
+                    pupil_coords.linput[i],
+                    pupil_coords.minput[i],
+                    l0s[isd],
+                    m0s[isd],
                 )
             else:
-                kxplus = kx + 2 * const.pi * linput[i] / const.dx
-                kyplus = ky + 2 * const.pi * minput[i] / const.dy
+                kxplus = kx + 2 * const.pi * pupil_coords.linput[i] / const.dx
+                kyplus = ky + 2 * const.pi * pupil_coords.minput[i] / const.dy
                 EAx, EAy, EAz = standard_na_electro_field(
                     kxplus, kyplus, Ax_val, Ay_val
                 )

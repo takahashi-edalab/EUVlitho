@@ -1,5 +1,5 @@
 import numpy as np
-from enum import Enum
+from enum import Enum, auto
 
 
 pi = np.pi
@@ -7,11 +7,23 @@ i_complex = 1j  # 複素単位
 
 # Default parameters
 MX = 4  # X magnification
-MY = 4  # Y magnification
-# NDIVX = 2048  # X pitch (nm)
-# NDIVY = 2048  # Y pitch (nm)
-NDIVX = 512  # X pitch (nm)
-NDIVY = 512  # Y pitch (nm)
+# Optical parameters
+is_high_na = True
+if is_high_na:
+    NA = 0.55
+    theta0 = -5.3  # incidence angle(degree) for high-NA
+    MY = 8  # Y magnification
+    NDIVX = 1024  # X pitch (nm)
+    NDIVY = 2 * NDIVX  # Y pitch (nm)
+
+else:
+    NA = 0.33
+    theta0 = -6.0  # incidence angle (degree)
+    MY = 4  # Y magnification
+    NDIVX = 1024  # X pitch (nm)
+    NDIVY = 1024  # Y pitch (nm)
+
+
 dx = NDIVX
 dy = NDIVY
 XDIV = NDIVX // MX
@@ -19,38 +31,32 @@ YDIV = NDIVY // MY
 MASK_REFINEMENT_FACTOR_X = 1  # Mask refinement factor in X
 MASK_REFINEMENT_FACTOR_Y = 1  # Mask refinement factor in Y
 
-# Optical parameters
 wavelength = 13.5  # wavelength (nm)
 k = 2.0 * pi / wavelength
-theta0 = -6.0  # chief ray angle (degree)
+kX = k * NA / MX
+kY = k * NA / MY
 azimuth = 0.0  # azimuthal angle (degree)
 phi0 = 90.0 - azimuth
-
-
-# NA = 0.33
-NA = 0.55
 kx0 = k * np.sin(np.deg2rad(theta0)) * np.cos(np.deg2rad(phi0))
 ky0 = k * np.sin(np.deg2rad(theta0)) * np.sin(np.deg2rad(phi0))
 
 
-# optical type
-mesh = 0.1
-
-
 class PolarizationDirection(Enum):
-    X = 0
-    Y = 1
+    X = auto()
+    Y = auto()
 
 
 class IlluminationType(Enum):
-    CIRCULAR = 0
-    ANNULAR = 1
-    DIPOLE = 2
+    CIRCULAR = auto()
+    ANNULAR = auto()
+    DIPOLE_X = auto()
+    DIPOLE_Y = auto()
 
 
-illumination_type = IlluminationType.DIPOLE
+# optical type
+illumination_type = IlluminationType.DIPOLE_Y
 sigma1 = 0.9  # outer sigma
-sigma2 = 0.55  # inner sigma
+sigma2 = 0.55  # inner sigma -> 間を光らせる
 openangle = 90.0  # opening angle for dipole illumination
 
 
@@ -84,9 +90,12 @@ epsilon_ru_si = n_ru_si**2
 epsilon_si_o2 = n_si_o2**2
 
 
+mesh = 0.5
+co = 0.2  # central obscuration of the pupil for high-NA
 # Calculation parameters
-sigmadiv = 2.0  # division angle of the source (degree)
-ndivs = max(1, int(180.0 / pi * wavelength / dx / sigmadiv))
+ndivX = max(1, int(180.0 / pi * wavelength / dx / mesh))
+ndivY = max(1, int(180.0 / pi * wavelength / dy / mesh))
+#
 lsmaxX = int(NA * dx / MX / wavelength + 1)
 lsmaxY = int(NA * dy / MY / wavelength + 1)
 lpmaxX = int(NA * dx / MX * 2 / wavelength + 0.0001)
@@ -101,11 +110,9 @@ noutXL = 2 * lpmaxX + 10
 noutYL = 2 * lpmaxY + 10
 
 
-# ?
-z = 0.0  # defocus
 dabst = 60.0  # absorber thickness (nm)
 z0 = dabst + 42.0  # reflection point inside ML from the top of the absorber
 
-
+# absorber properties
 absorption_amplitudes = [nta**2]
 absorber_layer_thicknesses = [dabst]

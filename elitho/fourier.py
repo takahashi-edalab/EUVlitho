@@ -16,7 +16,7 @@ def mask(
     # refine mask pattern
     refined_mask = ip.refine(mask_pattern, refinement_factor_x, refinement_factor_y)
     # create amplitude pattern
-    pattern = xp.where(refined_mask, ampta, ampvc).astype(xp.complex128)
+    pattern = xp.where(refined_mask, ampvc, ampta).astype(xp.complex128)
     # FFT with scaling
     fft_map = xp.fft.fftshift(xp.fft.fft2(pattern, norm="forward"))
     # extract central region

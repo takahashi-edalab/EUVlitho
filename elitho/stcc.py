@@ -129,6 +129,42 @@ def propagation(fmask):
     return fampxx
 
 
+def calc_xpolar_field_terms(Ax, dxAx, dyAx, kxplus, kyplus, kzplus, lp, mp):
+    zi = 1j
+    Exs0 = zi * const.k * Ax - zi / const.k * kxplus * kxplus * Ax
+    Exsx = (
+        -2 * zi / const.k * kxplus * Ax
+        + zi * const.k * dxAx
+        - zi / const.k * kxplus * kxplus * dxAx
+    )
+    Exsy = zi * const.k * dyAx - zi / const.k * kxplus * kxplus * dyAx
+    Exsxy = (
+        Exsx / (const.dx / (2 * np.pi)) * lp / 2
+        + Exsy / (const.dy / (2 * np.pi)) * mp / 2
+    )
+
+    Eys0 = -zi / const.k * kxplus * kyplus * Ax
+    Eysx = -zi / const.k * kyplus * Ax - zi / const.k * kxplus * kyplus * dxAx
+    Eysy = -zi / const.k * kxplus * Ax - zi / const.k * kxplus * kyplus * dyAx
+    Eysxy = (
+        Eysx / (const.dx / (2 * np.pi)) * lp / 2
+        + Eysy / (const.dy / (2 * np.pi)) * mp / 2
+    )
+
+    Ezs0 = -zi / const.k * kxplus * kzplus * Ax
+    Ezsx = -zi / const.k * kzplus * Ax - zi / const.k * kxplus * kzplus * dxAx
+    Ezsy = -zi / const.k * kxplus * kzplus * dyAx
+    Ezsxy = (
+        Ezsx / (const.dx / (2 * np.pi)) * lp / 2
+        + Ezsy / (const.dy / (2 * np.pi)) * mp / 2
+    )
+    return Exs0, Exsx, Exsy, Exsxy, Eys0, Eysx, Eysy, Eysxy, Ezs0, Ezsx, Ezsy, Ezsxy
+
+
+def calc_ypolar_field_terms():
+    pass
+
+
 def electric_field(
     polar: const.PolarizationDirection,
     pupil_coords: pupil.PupilCoordinates,
@@ -184,40 +220,20 @@ def electric_field(
             else:
                 raise ValueError("a0xx, axxx, ayxx must be all None or all not None")
 
-            # --- 2) ベクトル回折式のテイラー展開 ---
-            ef["Exs0"][i] = zi * const.k * Ax - zi / const.k * kxplus * kxplus * Ax
-            ef["Exsx"][i] = (
-                -2 * zi / const.k * kxplus * Ax
-                + zi * const.k * dxAx
-                - zi / const.k * kxplus * kxplus * dxAx
-            )
-            ef["Exsy"][i] = zi * const.k * dyAx - zi / const.k * kxplus * kxplus * dyAx
-            ef["Exsxy"][i] = (
-                ef["Exsx"][i] / (const.dx / (2 * np.pi)) * lp / 2
-                + ef["Exsy"][i] / (const.dy / (2 * np.pi)) * mp / 2
-            )
-
-            ef["Eys0"][i] = -zi / const.k * kxplus * kyplus * Ax
-            ef["Eysx"][i] = (
-                -zi / const.k * kyplus * Ax - zi / const.k * kxplus * kyplus * dxAx
-            )
-            ef["Eysy"][i] = (
-                -zi / const.k * kxplus * Ax - zi / const.k * kxplus * kyplus * dyAx
-            )
-            ef["Eysxy"][i] = (
-                ef["Eysx"][i] / (const.dx / (2 * np.pi)) * lp / 2
-                + ef["Eysy"][i] / (const.dy / (2 * np.pi)) * mp / 2
-            )
-
-            ef["Ezs0"][i] = -zi / const.k * kxplus * kzplus * Ax
-            ef["Ezsx"][i] = (
-                -zi / const.k * kzplus * Ax - zi / const.k * kxplus * kzplus * dxAx
-            )
-            ef["Ezsy"][i] = -zi / const.k * kxplus * kzplus * dyAx
-            ef["Ezsxy"][i] = (
-                ef["Ezsx"][i] / (const.dx / (2 * np.pi)) * lp / 2
-                + ef["Ezsy"][i] / (const.dy / (2 * np.pi)) * mp / 2
-            )
+            (
+                ef["Exs0"][i],
+                ef["Exsx"][i],
+                ef["Exsy"][i],
+                ef["Exsxy"][i],
+                ef["Eys0"][i],
+                ef["Eysx"][i],
+                ef["Eysy"][i],
+                ef["Eysxy"][i],
+                ef["Ezs0"][i],
+                ef["Ezsx"][i],
+                ef["Ezsy"][i],
+                ef["Ezsxy"][i],
+            ) = calc_xpolar_field_terms(Ax, dxAx, dyAx, kxplus, kyplus, kzplus, lp, mp)
 
         elif polar == const.PolarizationDirection.Y:  # Y偏光
             if type == 1:

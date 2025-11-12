@@ -54,7 +54,7 @@ class LinePattern(MaskPattern):
         return mask1d
 
     def _generate(self, width: int, height: int) -> np.ndarray:
-        mask2d = np.zeros((height, width), dtype=int)
+        mask2d = np.zeros((width, height), dtype=int)
         space = random.randint(0, 1)
         sum_val = 0
 
@@ -64,25 +64,28 @@ class LinePattern(MaskPattern):
             else:
                 mask1dy = self.rand_mask_line(height, gap=self.gap)
                 for i in range(sum_val, min(sum_val + self.cd, width)):
-                    for j in range(height):
-                        mask2d[j, i] = mask1dy[j]
+                    mask2d[i, :] = mask1dy
                 space = 1
             # update
             sum_val += self.cd
 
         for i in range(sum_val, width):
             if space == 0:
-                for j in range(height):
-                    mask2d[j, i] = 1
+                mask2d[i, :] = np.ones(height, dtype=int)
             else:
-                for j in range(height):
-                    mask2d[j, i] = mask1dy[j]
+                mask2d[i, :] = mask1dy
 
         return mask2d
 
     def __call__(self, width: int, height: int) -> np.ndarray:
-        mask = self._generate(width, height)
         if self.direction == "H":
+            mask = self._generate(width, height)
+        elif self.direction == "V":
+            mask = self._generate(height, width)
+        else:
+            raise ValueError("Invalid line pattern direction")
+
+        if self.direction == "V":
             mask = mask.T
 
         if self.field_type == "BF":
