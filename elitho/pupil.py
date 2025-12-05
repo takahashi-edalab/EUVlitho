@@ -1,22 +1,24 @@
 import numpy as np
-from elitho import const
+from elitho import config
 
 
 def count_overlapping_sources(
     px: int, py: int, offset_x: int = 0, offset_y: int = 0
 ) -> int:
     n_sources = 0
-    for is_src in range(const.nsourceX):
-        for js_src in range(const.nsourceY):
-            sx = is_src - const.lsmaxX + offset_x / const.ndivX
-            sy = js_src - const.lsmaxY + offset_y / const.ndivY
+    for is_src in range(config.nsourceX):
+        for js_src in range(config.nsourceY):
+            sx = is_src - config.lsmaxX + offset_x / config.ndivX
+            sy = js_src - config.lsmaxY + offset_y / config.ndivY
 
-            source_condition = (sx * const.MX / const.dx) ** 2 + (
-                sy * const.MY / const.dy
-            ) ** 2 <= (const.NA / const.wavelength) ** 2
-            pupil_condition = ((px - const.lpmaxX + sx) * const.MX / const.dx) ** 2 + (
-                (py - const.lpmaxY + sy) * const.MY / const.dy
-            ) ** 2 <= (const.NA / const.wavelength) ** 2
+            source_condition = (sx * config.MX / config.dx) ** 2 + (
+                sy * config.MY / config.dy
+            ) ** 2 <= (config.NA / config.wavelength) ** 2
+            pupil_condition = (
+                (px - config.lpmaxX + sx) * config.MX / config.dx
+            ) ** 2 + ((py - config.lpmaxY + sy) * config.MY / config.dy) ** 2 <= (
+                config.NA / config.wavelength
+            ) ** 2
             if source_condition and pupil_condition:
                 n_sources += 1
     return n_sources
@@ -29,12 +31,12 @@ def find_valid_pupil_points(
     minput = np.zeros(nrange, dtype=int)
     xinput = np.zeros(nrange, dtype=int)
     n_pupil_points = 0
-    for ip in range(const.noutX):
-        for jp in range(const.noutY):
+    for ip in range(config.noutX):
+        for jp in range(config.noutY):
             n_sources = count_overlapping_sources(ip, jp, offset_x, offset_y)
             if n_sources > 0:
-                linput[n_pupil_points] = ip - const.lpmaxX
-                minput[n_pupil_points] = jp - const.lpmaxY
+                linput[n_pupil_points] = ip - config.lpmaxX
+                minput[n_pupil_points] = jp - config.lpmaxY
                 xinput[n_pupil_points] = n_sources
                 n_pupil_points += 1
     return linput, minput, xinput, n_pupil_points

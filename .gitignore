@@ -2,6 +2,7 @@
 *.npy
 *.npz
 *.csv
+assets/profile
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

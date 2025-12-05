@@ -1,5 +1,5 @@
 from functools import cached_property
-from elitho import const
+from elitho import config
 
 
 class DiffractionOrderDescriptor:
@@ -32,7 +32,7 @@ class DiffractionOrderDescriptor:
         float
             Spatial frequency cutoff in x-direction.
         """
-        return const.NA / const.MX * self._cutoff_factor
+        return config.NA / config.MX * self._cutoff_factor
 
     @cached_property
     def spatial_freq_cutoff_y(self) -> float:
@@ -44,7 +44,7 @@ class DiffractionOrderDescriptor:
         float
             Spatial frequency cutoff in y-direction.
         """
-        return const.NA / const.MX * self._cutoff_factor
+        return config.NA / config.MX * self._cutoff_factor
 
     @cached_property
     def max_diffraction_order_x(self) -> int:
@@ -56,7 +56,7 @@ class DiffractionOrderDescriptor:
         int
             Maximum diffraction order along x.
         """
-        return int(self.spatial_freq_cutoff_x * const.dx / const.wavelength)
+        return int(self.spatial_freq_cutoff_x * config.dx / config.wavelength)
 
     @cached_property
     def max_diffraction_order_y(self) -> int:
@@ -68,7 +68,7 @@ class DiffractionOrderDescriptor:
         int
             Maximum diffraction order along y.
         """
-        return int(self.spatial_freq_cutoff_y * const.dy / const.wavelength)
+        return int(self.spatial_freq_cutoff_y * config.dy / config.wavelength)
 
     @cached_property
     def num_diffraction_orders_x(self):

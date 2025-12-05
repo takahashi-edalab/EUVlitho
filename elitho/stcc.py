@@ -1,7 +1,7 @@
 import numpy as np
 from elitho import (
+    config,
     diffraction_amplitude,
-    const,
     descriptors,
     diffraction_order,
     source,
@@ -39,14 +39,14 @@ def tcc_matrices(
             dtype=np.complex128,
         ),
     )
-    pmax = (const.k * const.NA) ** 2
+    pmax = (config.k * config.NA) ** 2
     for i in range(pupil_coords.n_coordinates):
-        kx = 2 * np.pi / const.dx * pupil_coords.linput[i]
-        ky = 2 * np.pi / const.dy * pupil_coords.minput[i]
+        kx = 2 * np.pi / config.dx * pupil_coords.linput[i]
+        ky = 2 * np.pi / config.dy * pupil_coords.minput[i]
 
         for j in range(i + 1):  # j <= i
-            kxp = 2 * np.pi / const.dx * pupil_coords.linput[j]
-            kyp = 2 * np.pi / const.dy * pupil_coords.minput[j]
+            kxp = 2 * np.pi / config.dx * pupil_coords.linput[j]
+            kyp = 2 * np.pi / config.dy * pupil_coords.minput[j]
 
             sumx_s0 = 0 + 0j
             sumy_s0 = 0 + 0j
@@ -61,25 +61,25 @@ def tcc_matrices(
                 ksxp = kxp + sx
                 ksyp = kyp + sy
 
-                if (const.MX**2 * ksx**2 + const.MY**2 * ksy**2) <= pmax and (
-                    const.MX**2 * ksxp**2 + const.MY**2 * ksyp**2
+                if (config.MX**2 * ksx**2 + config.MY**2 * ksy**2) <= pmax and (
+                    config.MX**2 * ksxp**2 + config.MY**2 * ksyp**2
                 ) <= pmax:
 
                     phase = np.exp(
-                        const.i_complex
-                        * ((ksx + const.kx0) ** 2 + (ksy + const.ky0) ** 2)
-                        / (2 * const.k)
-                        * const.z0
+                        config.i_complex
+                        * ((ksx + config.kx0) ** 2 + (ksy + config.ky0) ** 2)
+                        / (2 * config.k)
+                        * config.z0
                     )
                     phasep = np.exp(
-                        const.i_complex
-                        * ((ksxp + const.kx0) ** 2 + (ksyp + const.ky0) ** 2)
-                        / (2 * const.k)
-                        * const.z0
+                        config.i_complex
+                        * ((ksxp + config.kx0) ** 2 + (ksyp + config.ky0) ** 2)
+                        / (2 * config.k)
+                        * config.z0
                     )
 
-                    denom_x = const.k**2 - (const.kx0 + sx) ** 2
-                    denom_y = const.k**2 - (const.ky0 + sy) ** 2
+                    denom_x = config.k**2 - (config.kx0 + sx) ** 2
+                    denom_y = config.k**2 - (config.ky0 + sy) ** 2
 
                     sumx_s0 += phase * phasep.conjugate() / denom_x
                     sumy_s0 += phase * phasep.conjugate() / denom_y
@@ -104,26 +104,26 @@ def tcc_matrices(
 
 
 def shift_center(fft_mask):
-    fmask = np.zeros((const.noutX, const.noutY), dtype=np.complex128)
+    fmask = np.zeros((config.noutX, config.noutY), dtype=np.complex128)
     # NOTE: NDIVX, NDIVYはもともとFDIVX, FDIVYという名前
-    for i in range(const.noutX):
-        l = (i - const.lpmaxX + const.NDIVX) % const.NDIVX
-        for j in range(const.noutY):
-            m = (j - const.lpmaxY + const.NDIVY) % const.NDIVY
+    for i in range(config.noutX):
+        l = (i - config.lpmaxX + config.NDIVX) % config.NDIVX
+        for j in range(config.noutY):
+            m = (j - config.lpmaxY + config.NDIVY) % config.NDIVY
             fmask[i, j] = fft_mask[l, m]
     return fmask
 
 
 def propagation(fmask):
-    fampxx = np.zeros((const.noutX, const.noutY), dtype=np.complex128)
-    for ip in range(const.noutX):
-        for jp in range(const.noutY):
-            kxp = 2.0 * np.pi * (ip - const.lpmaxX) / const.dx
-            kyp = 2.0 * np.pi * (jp - const.lpmaxY) / const.dy
+    fampxx = np.zeros((config.noutX, config.noutY), dtype=np.complex128)
+    for ip in range(config.noutX):
+        for jp in range(config.noutY):
+            kxp = 2.0 * np.pi * (ip - config.lpmaxX) / config.dx
+            kyp = 2.0 * np.pi * (jp - config.lpmaxY) / config.dy
             phasesp = np.exp(
-                -const.i_complex
-                * (const.kx0 * kxp + kxp**2 / 2 + const.ky0 * kyp + kyp**2 / 2)
-                / (const.k * const.z0)
+                -config.i_complex
+                * (config.kx0 * kxp + kxp**2 / 2 + config.ky0 * kyp + kyp**2 / 2)
+                / (config.k * config.z0)
             )
             fampxx[ip, jp] = fmask[ip, jp] * phasesp
     return fampxx
@@ -131,32 +131,32 @@ def propagation(fmask):
 
 def calc_xpolar_field_terms(Ax, dxAx, dyAx, kxplus, kyplus, kzplus, lp, mp):
     zi = 1j
-    Exs0 = zi * const.k * Ax - zi / const.k * kxplus * kxplus * Ax
+    Exs0 = zi * config.k * Ax - zi / config.k * kxplus * kxplus * Ax
     Exsx = (
-        -2 * zi / const.k * kxplus * Ax
-        + zi * const.k * dxAx
-        - zi / const.k * kxplus * kxplus * dxAx
+        -2 * zi / config.k * kxplus * Ax
+        + zi * config.k * dxAx
+        - zi / config.k * kxplus * kxplus * dxAx
     )
-    Exsy = zi * const.k * dyAx - zi / const.k * kxplus * kxplus * dyAx
+    Exsy = zi * config.k * dyAx - zi / config.k * kxplus * kxplus * dyAx
     Exsxy = (
-        Exsx / (const.dx / (2 * np.pi)) * lp / 2
-        + Exsy / (const.dy / (2 * np.pi)) * mp / 2
+        Exsx / (config.dx / (2 * np.pi)) * lp / 2
+        + Exsy / (config.dy / (2 * np.pi)) * mp / 2
     )
 
-    Eys0 = -zi / const.k * kxplus * kyplus * Ax
-    Eysx = -zi / const.k * kyplus * Ax - zi / const.k * kxplus * kyplus * dxAx
-    Eysy = -zi / const.k * kxplus * Ax - zi / const.k * kxplus * kyplus * dyAx
+    Eys0 = -zi / config.k * kxplus * kyplus * Ax
+    Eysx = -zi / config.k * kyplus * Ax - zi / config.k * kxplus * kyplus * dxAx
+    Eysy = -zi / config.k * kxplus * Ax - zi / config.k * kxplus * kyplus * dyAx
     Eysxy = (
-        Eysx / (const.dx / (2 * np.pi)) * lp / 2
-        + Eysy / (const.dy / (2 * np.pi)) * mp / 2
+        Eysx / (config.dx / (2 * np.pi)) * lp / 2
+        + Eysy / (config.dy / (2 * np.pi)) * mp / 2
     )
 
-    Ezs0 = -zi / const.k * kxplus * kzplus * Ax
-    Ezsx = -zi / const.k * kzplus * Ax - zi / const.k * kxplus * kzplus * dxAx
-    Ezsy = -zi / const.k * kxplus * kzplus * dyAx
+    Ezs0 = -zi / config.k * kxplus * kzplus * Ax
+    Ezsx = -zi / config.k * kzplus * Ax - zi / config.k * kxplus * kzplus * dxAx
+    Ezsy = -zi / config.k * kxplus * kzplus * dyAx
     Ezsxy = (
-        Ezsx / (const.dx / (2 * np.pi)) * lp / 2
-        + Ezsy / (const.dy / (2 * np.pi)) * mp / 2
+        Ezsx / (config.dx / (2 * np.pi)) * lp / 2
+        + Ezsy / (config.dy / (2 * np.pi)) * mp / 2
     )
     return Exs0, Exsx, Exsy, Exsxy, Eys0, Eysx, Eysy, Eysxy, Ezs0, Ezsx, Ezsy, Ezsxy
 
@@ -166,7 +166,7 @@ def calc_ypolar_field_terms():
 
 
 def electric_field(
-    polar: const.PolarizationDirection,
+    polar: config.PolarizationDirection,
     pupil_coords: pupil.PupilCoordinates,
     fampxx: np.ndarray,
     a0xx: np.ndarray = None,
@@ -195,28 +195,28 @@ def electric_field(
     # 各空間周波数成分ごとに電場成分を計算
     for i in range(pupil_coords.n_coordinates):
         # --- 1) 波数ベクトル(kx, ky, kz) 計算 ---
-        kxplus = const.kx0 + 2 * np.pi * pupil_coords.linput[i] / const.dx / 2.0
-        kyplus = const.ky0 + 2 * np.pi * pupil_coords.minput[i] / const.dy / 2.0
+        kxplus = config.kx0 + 2 * np.pi * pupil_coords.linput[i] / config.dx / 2.0
+        kyplus = config.ky0 + 2 * np.pi * pupil_coords.minput[i] / config.dy / 2.0
 
         # kzはEvanescentを含むので負の平方根
-        kzplus = -np.sqrt(const.k * const.k - kxplus * kxplus - kyplus * kyplus)
+        kzplus = -np.sqrt(config.k * config.k - kxplus * kxplus - kyplus * kyplus)
 
         # 周波数インデックス (wrap)
-        ip = pupil_coords.linput[i] + const.lpmaxX
-        jp = pupil_coords.minput[i] + const.lpmaxY
-        lp = ip - const.lpmaxX
-        mp = jp - const.lpmaxY
+        ip = pupil_coords.linput[i] + config.lpmaxX
+        jp = pupil_coords.minput[i] + config.lpmaxY
+        lp = ip - config.lpmaxX
+        mp = jp - config.lpmaxY
 
         # 電場スペクトル Ax or Ay (偏光成分)
-        if polar == const.PolarizationDirection.X:  # X偏光
+        if polar == config.PolarizationDirection.X:  # X偏光
             if a0xx is None or axxx is None or ayxx is None:
                 Ax = fampxx[ip, jp]
                 dxAx = 0.0
                 dyAx = 0.0
             elif a0xx is not None and axxx is not None and ayxx is not None:
                 Ax = fampxx[ip, jp] + a0xx[ip, jp]
-                dxAx = axxx[ip, jp] * const.dx / (2 * np.pi)
-                dyAx = ayxx[ip, jp] * const.dy / (2 * np.pi)
+                dxAx = axxx[ip, jp] * config.dx / (2 * np.pi)
+                dyAx = ayxx[ip, jp] * config.dy / (2 * np.pi)
             else:
                 raise ValueError("a0xx, axxx, ayxx must be all None or all not None")
 
@@ -235,48 +235,50 @@ def electric_field(
                 ef["Ezsxy"][i],
             ) = calc_xpolar_field_terms(Ax, dxAx, dyAx, kxplus, kyplus, kzplus, lp, mp)
 
-        elif polar == const.PolarizationDirection.Y:  # Y偏光
+        elif polar == config.PolarizationDirection.Y:  # Y偏光
             if type == 1:
                 Ay = fampxx[ip, jp]
                 dxAy = 0.0
                 dyAy = 0.0
             else:
                 Ay = fampxx[ip, jp] + a0xx[ip, jp]
-                dxAy = axxx[ip, jp] * const.dx / (2 * np.pi)
-                dyAy = ayxx[ip, jp] * const.dy / (2 * np.pi)
+                dxAy = axxx[ip, jp] * config.dx / (2 * np.pi)
+                dyAy = ayxx[ip, jp] * config.dy / (2 * np.pi)
 
-            ef["Exs0"][i] = -zi / const.k * kxplus * kyplus * Ay
+            ef["Exs0"][i] = -zi / config.k * kxplus * kyplus * Ay
             ef["Exsx"][i] = (
-                -zi / const.k * kyplus * Ay - zi / const.k * kxplus * kyplus * dxAy
+                -zi / config.k * kyplus * Ay - zi / config.k * kxplus * kyplus * dxAy
             )
             ef["Exsy"][i] = (
-                -zi / const.k * kxplus * Ay - zi / const.k * kxplus * kyplus * dyAy
+                -zi / config.k * kxplus * Ay - zi / config.k * kxplus * kyplus * dyAy
             )
             ef["Exsxy"][i] = (
-                ef["Exsx"][i] / (const.dx / (2 * np.pi)) * lp / 2
-                + ef["Exsy"][i] / (const.dy / (2 * np.pi)) * mp / 2
+                ef["Exsx"][i] / (config.dx / (2 * np.pi)) * lp / 2
+                + ef["Exsy"][i] / (config.dy / (2 * np.pi)) * mp / 2
             )
 
-            ef["Eys0"][i] = zi / const.k * Ay - zi / const.k * kyplus * kyplus * Ay
-            ef["Eysx"][i] = zi / const.k * dxAy - zi / const.k * kyplus * kyplus * dxAy
+            ef["Eys0"][i] = zi / config.k * Ay - zi / config.k * kyplus * kyplus * Ay
+            ef["Eysx"][i] = (
+                zi / config.k * dxAy - zi / config.k * kyplus * kyplus * dxAy
+            )
             ef["Eysy"][i] = (
-                -2 * zi / const.k * kyplus * Ay
-                + zi / const.k * dyAy
-                - zi / const.k * kyplus * kyplus * dyAy
+                -2 * zi / config.k * kyplus * Ay
+                + zi / config.k * dyAy
+                - zi / config.k * kyplus * kyplus * dyAy
             )
             ef["Eysxy"][i] = (
-                ef["Eysx"][i] / (const.dx / (2 * np.pi)) * lp / 2
-                + ef["Eysy"][i] / (const.dy / (2 * np.pi)) * mp / 2
+                ef["Eysx"][i] / (config.dx / (2 * np.pi)) * lp / 2
+                + ef["Eysy"][i] / (config.dy / (2 * np.pi)) * mp / 2
             )
 
-            ef["Ezs0"][i] = -zi / const.k * kyplus * kzplus * Ay
-            ef["Ezsx"][i] = -zi / const.k * kyplus * kzplus * dxAy
+            ef["Ezs0"][i] = -zi / config.k * kyplus * kzplus * Ay
+            ef["Ezsx"][i] = -zi / config.k * kyplus * kzplus * dxAy
             ef["Ezsy"][i] = (
-                -zi / const.k * kzplus * Ay - zi / const.k * kyplus * kzplus * dyAy
+                -zi / config.k * kzplus * Ay - zi / config.k * kyplus * kzplus * dyAy
             )
             ef["Ezsxy"][i] = (
-                ef["Ezsx"][i] / (const.dx / (2 * np.pi)) * lp / 2
-                + ef["Ezsy"][i] / (const.dy / (2 * np.pi)) * mp / 2
+                ef["Ezsx"][i] / (config.dx / (2 * np.pi)) * lp / 2
+                + ef["Ezsy"][i] / (config.dy / (2 * np.pi)) * mp / 2
             )
         else:
             raise ValueError("polar must be 'X' or 'Y'")
@@ -285,14 +287,14 @@ def electric_field(
 
 
 def calc_tccee(
-    polar: const.PolarizationDirection,
+    polar: config.PolarizationDirection,
     pupil_coords: pupil.PupilCoordinates,
     ef: dict[str, np.ndarray],
     TCC: dict[str, np.ndarray],
 ) -> np.ndarray:
     # TCCEE initialization
-    TCCEE = np.zeros((const.XDIV, const.XDIV), dtype=np.complex128)
-    if polar == const.PolarizationDirection.X:
+    TCCEE = np.zeros((config.XDIV, config.XDIV), dtype=np.complex128)
+    if polar == config.PolarizationDirection.X:
         for i in range(pupil_coords.n_coordinates):
             ix = pupil_coords.linput[i]
             iy = pupil_coords.minput[i]
@@ -300,8 +302,8 @@ def calc_tccee(
                 jx = pupil_coords.linput[j]
                 jy = pupil_coords.minput[j]
 
-                px = (ix - jx + const.XDIV) % const.XDIV
-                py = (iy - jy + const.XDIV) % const.XDIV
+                px = (ix - jx + config.XDIV) % config.XDIV
+                py = (iy - jy + config.XDIV) % config.XDIV
 
                 TCCEE[px, py] += TCC["XS0"][i, j] * (
                     ef["Exs0"][i] * np.conj(ef["Exs0"][j])
@@ -339,7 +341,7 @@ def calc_tccee(
                     )
                 )
 
-    elif polar == const.PolarizationDirection.Y:
+    elif polar == config.PolarizationDirection.Y:
         for i in range(pupil_coords.n_coordinates):
             ix = pupil_coords.linput[i]
             iy = pupil_coords.minput[i]
@@ -347,8 +349,8 @@ def calc_tccee(
                 jx = pupil_coords.linput[j]
                 jy = pupil_coords.minput[j]
 
-                px = (ix - jx + const.XDIV) % const.XDIV
-                py = (iy - jy + const.XDIV) % const.XDIV
+                px = (ix - jx + config.XDIV) % config.XDIV
+                py = (iy - jy + config.XDIV) % config.XDIV
 
                 TCCEE[px, py] += TCC["YS0"][i, j] * (
                     ef["Exs0"][i] * np.conj(ef["Exs0"][j])
@@ -393,7 +395,7 @@ def calc_tccee(
 
 def intensity(
     mask: np.ndarray,
-    polar: const.PolarizationDirection,
+    polar: config.PolarizationDirection,
     a0xx: np.ndarray = None,
     axxx: np.ndarray = None,
     ayxx: np.ndarray = None,
@@ -415,7 +417,7 @@ def intensity(
     pupil_coords = pupil.PupilCoordinates(doc_wide.num_valid_diffraction_orders)
     uniform_k_source = source.UniformKSource()
     amp_absorber, amp_vacuum, phasexx = diffraction_amplitude.zero_order_amplitude(
-        const.PolarizationDirection.X, dod_wide, doc_narrow
+        config.PolarizationDirection.X, dod_wide, doc_narrow
     )
 
     hfpattern = mask * (amp_absorber - amp_vacuum) + amp_vacuum

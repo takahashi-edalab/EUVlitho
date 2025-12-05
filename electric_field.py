@@ -1,5 +1,5 @@
 import numpy as np
-from elitho import const
+from elitho import config
 
 
 def electric_field_distribution(
@@ -17,9 +17,9 @@ def electric_field_distribution(
             np.pi / 180.0 * delta
         ) + cosphi * np.sin(np.pi / 180.0 * delta)
         Ez0p = -np.sin(np.pi / 180.0 * theta) * np.cos(np.pi / 180.0 * delta)
-        ES = np.zeros((const.Nrange2), dtype=complex)
-        for i in range(const.Nrange):
-            i2 = i + const.Nrange
+        ES = np.zeros((config.Nrange2), dtype=complex)
+        for i in range(config.Nrange):
+            i2 = i + config.Nrange
             if (lindex[i] == l0) and (mindex[i] == m0):
                 ES[i] = 2.0 * kz * Ex0p
                 ES[i2] = 2.0 * kz * Ey0p
@@ -27,14 +27,14 @@ def electric_field_distribution(
         A1 = U1U @ AS
         A1p = U1B @ AS
 
-        for i in range(const.Nrange):
-            i2 = i + const.Nrange
+        for i in range(config.Nrange):
+            i2 = i + config.Nrange
             sumx = sumy = sumz = 0.0
             if (lindex[i] == l0) and (mindex[i] == m0):
                 sumx += -Ex0p
                 sumy += -Ey0p
                 sumz += -Ez0p
-            for n in range(const.Nrange2):
+            for n in range(config.Nrange2):
                 sumx += (A1[n] + A1p[n]) * B1[i, n]
                 sumy += (A1[n] + A1p[n]) * B1[i2, n]
                 sumz += (

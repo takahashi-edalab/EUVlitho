@@ -1,18 +1,18 @@
 import numpy as np
-from elitho import const
+from elitho import config, config
 
 
 def m3d_params(pupil_coords, dampxx):
-    a0xx = np.zeros((const.noutX, const.noutY), dtype=np.complex128)
-    axxx = np.zeros((const.noutX, const.noutY), dtype=np.complex128)
-    ayxx = np.zeros((const.noutX, const.noutY), dtype=np.complex128)
+    a0xx = np.zeros((config.noutX, config.noutY), dtype=np.complex128)
+    axxx = np.zeros((config.noutX, config.noutY), dtype=np.complex128)
+    ayxx = np.zeros((config.noutX, config.noutY), dtype=np.complex128)
 
     # ninput個の入力点ループ
     for n in range(pupil_coords.n_coordinates):
         lp = pupil_coords.linput[n]
         mp = pupil_coords.minput[n]
-        ip = pupil_coords.linput[n] + const.lpmaxX
-        jp = pupil_coords.minput[n] + const.lpmaxY
+        ip = pupil_coords.linput[n] + config.lpmaxX
+        jp = pupil_coords.minput[n] + config.lpmaxY
 
         # 集計変数の初期化
         xxf1 = 0 + 0j
@@ -26,21 +26,21 @@ def m3d_params(pupil_coords, dampxx):
         cxy = 0 + 0j
 
         # 光源ループ
-        for is_ in range(const.nsourceX):
-            for js in range(const.nsourceY):
-                ls = is_ - const.lsmaxX + lp / 2.0
-                ms = js - const.lsmaxY + mp / 2.0
+        for is_ in range(config.nsourceX):
+            for js in range(config.nsourceY):
+                ls = is_ - config.lsmaxX + lp / 2.0
+                ms = js - config.lsmaxY + mp / 2.0
 
                 # 条件: source と pupil plane が NA 内
-                cond_source = ((is_ - const.lsmaxX) * const.MX / const.dx) ** 2 + (
-                    (js - const.lsmaxY) * const.MY / const.dy
-                ) ** 2 <= (const.NA / const.wavelength) ** 2
+                cond_source = ((is_ - config.lsmaxX) * config.MX / config.dx) ** 2 + (
+                    (js - config.lsmaxY) * config.MY / config.dy
+                ) ** 2 <= (config.NA / config.wavelength) ** 2
                 cond_pupil = (
-                    (ip - const.lpmaxX + is_ - const.lsmaxX) * const.MX / const.dx
+                    (ip - config.lpmaxX + is_ - config.lsmaxX) * config.MX / config.dx
                 ) ** 2 + (
-                    (jp - const.lpmaxY + js - const.lsmaxY) * const.MY / const.dy
+                    (jp - config.lpmaxY + js - config.lsmaxY) * config.MY / config.dy
                 ) ** 2 <= (
-                    const.NA / const.wavelength
+                    config.NA / config.wavelength
                 ) ** 2
 
                 if cond_source and cond_pupil:
@@ -87,8 +87,8 @@ def m3d_params(pupil_coords, dampxx):
     return a0xx, axxx, ayxx
 
 
-def m3d_from_mask(mask: np.ndarray) -> np.ndarray:
-    from elitho import diffraction_amplitude, const, descriptors, diffraction_order
+def m3d_from_mask(polar: config.PolarizationDirection, mask: np.ndarray) -> np.ndarray:
+    from elitho import diffraction_amplitude, descriptors, diffraction_order
     from elitho.pupil import PupilCoordinates
 
     dod_narrow = descriptors.DiffractionOrderDescriptor(1.5)
@@ -105,10 +105,10 @@ def m3d_from_mask(mask: np.ndarray) -> np.ndarray:
     )
     pupil_coords = PupilCoordinates(doc_wide.num_valid_diffraction_orders)
     abxx, vcxx = diffraction_amplitude.absorber_and_vacuum_amplitudes(
-        const.PolarizationDirection.X, dod_wide, doc_narrow
+        polar, dod_wide, doc_narrow
     )
     dampxx = diffraction_amplitude.compute_diffraction_difference(
-        const.PolarizationDirection.X, mask, abxx, vcxx, dod_wide, doc_wide
+        polar, mask, abxx, vcxx, dod_wide, doc_wide
     )
     a0xx, axxx, ayxx = m3d_params(pupil_coords, dampxx)
     return a0xx, axxx, ayxx

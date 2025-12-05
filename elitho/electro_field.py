@@ -1,5 +1,5 @@
 import numpy as np
-from elitho import const
+from elitho import config
 
 
 def polarization_rotation(k, MX, MY, px, py, sx0, sy0) -> np.ndarray:
@@ -41,49 +41,49 @@ def polarization_rotation(k, MX, MY, px, py, sx0, sy0) -> np.ndarray:
 
 def high_na_electro_field(nsx, nsy, Ax_val, Ay_val, linput, minput, l0s, m0s):
     kxn = (
-        (2 * const.pi / const.dx) * (nsx / const.ndivX)
-        + (2 * const.pi / const.dx) * l0s
-        + (2 * const.pi * linput / const.dx)
+        (2 * np.pi / config.dx) * (nsx / config.ndivX)
+        + (2 * np.pi / config.dx) * l0s
+        + (2 * np.pi * linput / config.dx)
     )
     kyn = (
-        (2 * const.pi / const.dy) * (nsy / const.ndivY)
-        + (2 * const.pi / const.dy) * m0s
-        + (2 * const.pi * minput / const.dy)
+        (2 * np.pi / config.dy) * (nsy / config.ndivY)
+        + (2 * np.pi / config.dy) * m0s
+        + (2 * np.pi * minput / config.dy)
     )
     EAx = 0.0
     EAy = 0.0
     EAz = 0.0
-    p2 = const.MX**2 * kxn**2 + const.MY**2 * kyn**2
+    p2 = config.MX**2 * kxn**2 + config.MY**2 * kyn**2
     if all(
         [
-            (const.NA * const.k * const.co) ** 2 <= p2,
-            p2 <= (const.NA * const.k) ** 2,
+            (config.NA * config.k * config.co) ** 2 <= p2,
+            p2 <= (config.NA * config.k) ** 2,
         ]
     ):
         R = polarization_rotation(
-            const.k, const.MX, const.MY, kxn, kyn, const.kx0, const.ky0
+            config.k, config.MX, config.MY, kxn, kyn, config.kx0, config.ky0
         )
-        EAx = const.i_complex * const.k * (R[0, 0] * Ax_val + R[0, 1] * Ay_val)
-        EAy = const.i_complex * const.k * (R[1, 0] * Ax_val + R[1, 1] * Ay_val)
-        EAz = const.i_complex * const.k * (R[2, 0] * Ax_val + R[2, 1] * Ay_val)
+        EAx = config.i_complex * config.k * (R[0, 0] * Ax_val + R[0, 1] * Ay_val)
+        EAy = config.i_complex * config.k * (R[1, 0] * Ax_val + R[1, 1] * Ay_val)
+        EAz = config.i_complex * config.k * (R[2, 0] * Ax_val + R[2, 1] * Ay_val)
     return EAx, EAy, EAz
 
 
 def standard_na_electro_field(kxplus, kyplus, Ax_val, Ay_val):
     kxy2 = kxplus**2 + kyplus**2
-    klm = np.sqrt(const.k**2 - kxy2)
-    EAx = const.i_complex * const.k * Ax_val - const.i_complex / const.k * (
+    klm = np.sqrt(config.k**2 - kxy2)
+    EAx = config.i_complex * config.k * Ax_val - config.i_complex / config.k * (
         kxplus**2 * Ax_val + kxplus * kyplus * Ay_val
     )
-    EAy = const.i_complex * const.k * Ay_val - const.i_complex / const.k * (
+    EAy = config.i_complex * config.k * Ay_val - config.i_complex / config.k * (
         kxplus * kyplus * Ax_val + kyplus**2 * Ay_val
     )
-    EAz = const.i_complex * klm / const.k * (kxplus * Ax_val + kyplus * Ay_val)
+    EAz = config.i_complex * klm / config.k * (kxplus * Ax_val + kyplus * Ay_val)
     return EAx, EAy, EAz
 
 
 def electro_field(
-    polar: const.PolarizationDirection,
+    polar: config.PolarizationDirection,
     is_high_na: bool,
     nsx: int,
     nsy: int,
@@ -100,20 +100,20 @@ def electro_field(
     Ez0m = np.zeros_like(Ex0m)
 
     for isd in range(SDIV):
-        kx = sx0 + 2.0 * const.pi / const.dx * l0s[isd]
-        ky = sy0 + 2.0 * const.pi / const.dy * m0s[isd]
-        ls = l0s[isd] + const.lsmaxX
-        ms = m0s[isd] + const.lsmaxY
+        kx = sx0 + 2.0 * np.pi / config.dx * l0s[isd]
+        ky = sy0 + 2.0 * np.pi / config.dy * m0s[isd]
+        ls = l0s[isd] + config.lsmaxX
+        ms = m0s[isd] + config.lsmaxY
         for i in range(pupil_coords.n_coordinates):
-            ip = pupil_coords.linput[i] + const.lpmaxX
-            jp = pupil_coords.minput[i] + const.lpmaxY
+            ip = pupil_coords.linput[i] + config.lpmaxX
+            jp = pupil_coords.minput[i] + config.lpmaxY
 
-            if polar == const.PolarizationDirection.X:
-                Ax_val = ampxx[ls, ms, ip, jp] / np.sqrt(const.k**2 - kx**2)
+            if polar == config.PolarizationDirection.X:
+                Ax_val = ampxx[ls, ms, ip, jp] / np.sqrt(config.k**2 - kx**2)
                 Ay_val = 0
-            elif polar == const.PolarizationDirection.Y:
+            elif polar == config.PolarizationDirection.Y:
                 Ax_val = 0
-                Ay_val = ampxx[ls, ms, ip, jp] / np.sqrt(const.k**2 - ky**2)
+                Ay_val = ampxx[ls, ms, ip, jp] / np.sqrt(config.k**2 - ky**2)
             else:
                 raise ValueError("polar must be 'X' or 'Y'")
 
@@ -129,8 +129,8 @@ def electro_field(
                     m0s[isd],
                 )
             else:
-                kxplus = kx + 2 * const.pi * pupil_coords.linput[i] / const.dx
-                kyplus = ky + 2 * const.pi * pupil_coords.minput[i] / const.dy
+                kxplus = kx + 2 * np.pi * pupil_coords.linput[i] / config.dx
+                kyplus = ky + 2 * np.pi * pupil_coords.minput[i] / config.dy
                 EAx, EAy, EAz = standard_na_electro_field(
                     kxplus, kyplus, Ax_val, Ay_val
                 )

@@ -1,10 +1,10 @@
 import cupy as cp
-from elitho import const
+from elitho import config
 from elitho.utils.mat_utils import linalg_eig
 
 
 def calc_sigma(
-    polar: const.PolarizationDirection,
+    polar: config.PolarizationDirection,
     dod,
     doc: "diffraction_order.DiffractionOrderCoordinate",
     kxplus: "xp.ndarray",
@@ -17,9 +17,9 @@ def calc_sigma(
     My = dod.max_diffraction_order_y
     llp = lx[:, None] - lx[None, :] + 2 * Mx
     mmp = ly[:, None] - ly[None, :] + 2 * My
-    if polar == const.PolarizationDirection.X:
+    if polar == config.PolarizationDirection.X:
         coef = kxplus
-    elif polar == const.PolarizationDirection.Y:
+    elif polar == config.PolarizationDirection.Y:
         coef = kyplus
     else:
         raise ValueError("Invalid polarization direction")
@@ -28,7 +28,7 @@ def calc_sigma(
 
 
 def absorber(
-    polar: const.PolarizationDirection,
+    polar: config.PolarizationDirection,
     dod: "descriptors.DiffractionOrderDescriptor",
     doc: "descriptors.DiffractionOrderDescriptor",
     kxplus: "xp.ndarray",
@@ -56,10 +56,10 @@ def absorber(
         - doc.valid_y_coords[None, :]
         + 2 * dod.max_diffraction_order_y
     )
-    if polar == const.PolarizationDirection.X:
-        D = eps[l, m] * const.k**2 - const.i_complex * eta[l, m] * kxplus[None, :]
-    elif polar == const.PolarizationDirection.Y:
-        D = eps[l, m] * const.k**2 - const.i_complex * zeta[l, m] * kyplus[None, :]
+    if polar == config.PolarizationDirection.X:
+        D = eps[l, m] * config.k**2 - config.i_complex * eta[l, m] * kxplus[None, :]
+    elif polar == config.PolarizationDirection.Y:
+        D = eps[l, m] * config.k**2 - config.i_complex * zeta[l, m] * kyplus[None, :]
     else:
         raise ValueError("Invalid polarization direction")
     D[
@@ -74,19 +74,19 @@ def absorber(
     Cjp = xp.linalg.solve(br1, br2)  # Cjp = np.linalg.inv(br1) @ br2
     new_sigma = calc_sigma(polar, dod, doc, kxplus, kyplus, sigma)
 
-    B1 = const.i_complex * (
-        const.k * br1
+    B1 = config.i_complex * (
+        config.k * br1
         - xp.outer(
-            kxplus if polar == const.PolarizationDirection.X else kyplus,
+            kxplus if polar == config.PolarizationDirection.X else kyplus,
             xp.ones(doc.num_valid_diffraction_orders),
         )
-        / const.k
+        / config.k
         * new_sigma
         @ br1
     )
 
     Cj = xp.linalg.solve(B1, B2)  # Cj = np.linalg.inv(B1) @ B2
-    gamma = xp.exp(const.i_complex * al1 * dabs)
+    gamma = xp.exp(config.i_complex * al1 * dabs)
     T1UL = 0.5 * (Cj + xp.outer(1 / al1, al2) * Cjp) / gamma[:, None]
     T1UR = 0.5 * (Cj - xp.outer(1 / al1, al2) * Cjp) / gamma[:, None]
     T1BL = 0.5 * (Cj - xp.outer(1 / al1, al2) * Cjp) * gamma[:, None]

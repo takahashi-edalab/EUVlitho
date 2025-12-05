@@ -1,5 +1,5 @@
 import cupy as cp
-from elitho import const
+from elitho import config
 
 
 def diag_mat(vals: "xp.ndarray") -> "sparse.csr_matrix":
@@ -12,7 +12,7 @@ def diag_mat(vals: "xp.ndarray") -> "sparse.csr_matrix":
 
 
 def transfer_matrix(
-    polar: const.PolarizationDirection,
+    polar: config.PolarizationDirection,
     num_valid_diffraction_orders: int,
     kxplus: "xp.ndarray",
     kyplus: "xp.ndarray",
@@ -26,23 +26,23 @@ def transfer_matrix(
 ]:
     xp = cp.get_array_module(kxplus)
     # identity diag Triplet (Cjp) -> all ones
-    k = const.k
+    k = config.k
     Cjp_vals = xp.ones(num_valid_diffraction_orders, dtype=xp.complex128)
 
     # Build Cj depending on polarization (diagonal entries)
-    if polar == const.PolarizationDirection.X:
+    if polar == config.PolarizationDirection.X:
         Cj_vals = (k - (kxplus**2) / k / next_epsilon) / (
             k - (kxplus**2) / k / current_epsilon
         )
 
-    elif polar == const.PolarizationDirection.Y:
+    elif polar == config.PolarizationDirection.Y:
         Cj_vals = (k - (kyplus**2) / k / next_epsilon) / (
             k - (kyplus**2) / k / current_epsilon
         )
     else:
         raise ValueError("Invalid polarization direction")
 
-    gamma = xp.exp(const.i_complex * current_alpha * current_thickness)
+    gamma = xp.exp(config.i_complex * current_alpha * current_thickness)
     # element-wise arrays for each diag
     ul_vals = 0.5 * (Cj_vals + (next_alpha / current_alpha) * Cjp_vals) / gamma
     ur_vals = 0.5 * (Cj_vals - (next_alpha / current_alpha) * Cjp_vals) / gamma
@@ -65,13 +65,13 @@ def multilayer_transfer_matrix(
 
     xp = cp.get_array_module(kxplus)
     # compute per-mode propagation constants (complex)
-    k = const.k
-    alpha_sio2 = xp.sqrt(k * k * const.epsilon_si_o2 - kxy2)
-    alpha_mo = xp.sqrt(k * k * const.epsilon_mo - kxy2)
-    alpha_si = xp.sqrt(k * k * const.epsilon_si - kxy2)
-    alpha_mo_si2 = xp.sqrt(k * k * const.epsilon_mo_si2 - kxy2)
-    alpha_ru = xp.sqrt(k * k * const.epsilon_ru - kxy2)
-    alpha_ru_si = xp.sqrt(k * k * const.epsilon_ru_si - kxy2)
+    k = config.k
+    alpha_sio2 = xp.sqrt(k * k * config.epsilon_si_o2 - kxy2)
+    alpha_mo = xp.sqrt(k * k * config.epsilon_mo - kxy2)
+    alpha_si = xp.sqrt(k * k * config.epsilon_si - kxy2)
+    alpha_mo_si2 = xp.sqrt(k * k * config.epsilon_mo_si2 - kxy2)
+    alpha_ru = xp.sqrt(k * k * config.epsilon_ru - kxy2)
+    alpha_ru_si = xp.sqrt(k * k * config.epsilon_ru_si - kxy2)
 
     # MO layer -> MO/Si2 layer
     TMOUL, TMOUR, TMOBL, TMOBR = transfer_matrix(
@@ -80,10 +80,10 @@ def multilayer_transfer_matrix(
         kxplus,
         kyplus,
         alpha_mo,
-        const.epsilon_mo,
-        const.thickness_mo,
+        config.epsilon_mo,
+        config.thickness_mo,
         alpha_mo_si2,
-        const.epsilon_mo_si2,
+        config.epsilon_mo_si2,
     )
 
     # MOSI layer -> MO layer
@@ -93,10 +93,10 @@ def multilayer_transfer_matrix(
         kxplus,
         kyplus,
         alpha_mo_si2,
-        const.epsilon_mo_si2,
-        const.thickness_mo_si,
+        config.epsilon_mo_si2,
+        config.thickness_mo_si,
         alpha_mo,
-        const.epsilon_mo,
+        config.epsilon_mo,
     )
 
     # SI layer -> MOSI2 layer
@@ -106,10 +106,10 @@ def multilayer_transfer_matrix(
         kxplus,
         kyplus,
         alpha_si,
-        const.epsilon_si,
-        const.thickness_si,
+        config.epsilon_si,
+        config.thickness_si,
         alpha_mo_si2,
-        const.epsilon_mo_si2,
+        config.epsilon_mo_si2,
     )
 
     # MOSI2 layer -> SI layer
@@ -119,10 +119,10 @@ def multilayer_transfer_matrix(
         kxplus,
         kyplus,
         alpha_mo_si2,
-        const.epsilon_mo_si2,
-        const.thickness_si_mo,
+        config.epsilon_mo_si2,
+        config.thickness_si_mo,
         alpha_si,
-        const.epsilon_si,
+        config.epsilon_si,
     )
 
     # RU/Si layer -> SI layer
@@ -132,10 +132,10 @@ def multilayer_transfer_matrix(
         kxplus,
         kyplus,
         alpha_ru_si,
-        const.epsilon_ru_si,
-        const.thickness_si_ru,
+        config.epsilon_ru_si,
+        config.thickness_si_ru,
         alpha_si,
-        const.epsilon_si,
+        config.epsilon_si,
     )
 
     # RU layer -> RU/Si layer
@@ -145,10 +145,10 @@ def multilayer_transfer_matrix(
         kxplus,
         kyplus,
         alpha_ru,
-        const.epsilon_ru,
-        const.thickness_ru,
+        config.epsilon_ru,
+        config.thickness_ru,
         alpha_ru_si,
-        const.epsilon_ru_si,
+        config.epsilon_ru_si,
     )
 
     # MO layer -> SIO2 layer
@@ -158,16 +158,16 @@ def multilayer_transfer_matrix(
         kxplus,
         kyplus,
         alpha_mo,
-        const.epsilon_mo,
-        const.thickness_mo,
+        config.epsilon_mo,
+        config.thickness_mo,
         alpha_sio2,
-        const.epsilon_si_o2,
+        config.epsilon_si_o2,
     )
 
     UU = TNU
     UB = TNB
-    for i in reversed(range(const.NML)):
-        if i < const.NML - 1:
+    for i in reversed(range(config.NML)):
+        if i < config.NML - 1:
             UU, UB = (TMOUL.dot(UU) + TMOUR.dot(UB), TMOBL.dot(UU) + TMOBR.dot(UB))
 
         UU, UB = (TMOSIUL.dot(UU) + TMOSIUR.dot(UB), TMOSIBL.dot(UU) + TMOSIBR.dot(UB))

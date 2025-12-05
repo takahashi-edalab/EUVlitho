@@ -1,5 +1,5 @@
 import cupy as cp
-from elitho import const, descriptors
+from elitho import config, descriptors
 from elitho.utils import image_processing as ip
 
 
@@ -57,7 +57,6 @@ def coefficients(
             extraction_size_x=dod.num_diffraction_orders_x_expanded,
             extraction_size_y=dod.num_diffraction_orders_y_expanded,
         )
-        # return
         # sigma
         sigma = mask(
             mask_pattern=mask_pattern,
@@ -83,8 +82,8 @@ def coefficients(
             - 2 * dod.max_diffraction_order_y
         )
 
-        zetal = const.i_complex * 2 * const.pi * i_idx[:, None] / const.dx
-        zetam = const.i_complex * 2 * const.pi * j_idx[None, :] / const.dy
+        zetal = config.i_complex * 2 * np.pi * i_idx[:, None] / config.dx
+        zetam = config.i_complex * 2 * np.pi * j_idx[None, :] / config.dy
 
         eta = zetal * leps
         zeta = zetam * leps
