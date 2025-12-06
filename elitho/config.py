@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from typing import ClassVar, Literal
 from functools import cached_property
 
+
 # # Default parameters
 # MX = 4  # X magnification
 # # Optical parameters
@@ -22,42 +23,6 @@ from functools import cached_property
 #     MY = 4  # Y magnification
 #     NDIVX = 1024  # X pitch (nm)
 #     NDIVY = 1024  # Y pitch (nm)
-
-
-# dx = NDIVX
-# dy = NDIVY
-# XDIV = NDIVX // MX
-# YDIV = NDIVY // MY
-# MASK_REFINEMENT_FACTOR_X = 1  # Mask refinement factor in X
-# MASK_REFINEMENT_FACTOR_Y = 1  # Mask refinement factor in Y
-
-# wavelength = 13.5  # wavelength (nm)
-# k = 2.0 * pi / wavelength
-# kX = k * NA / MX
-# kY = k * NA / MY
-# azimuth = 0.0  # azimuthal angle (degree)
-# phi0 = 90.0 - azimuth
-# kx0 = k * np.sin(np.deg2rad(theta0)) * np.cos(np.deg2rad(phi0))
-# ky0 = k * np.sin(np.deg2rad(theta0)) * np.sin(np.deg2rad(phi0))
-
-# mesh = 0.5
-# co = 0.2  # central obscuration of the pupil for high-NA
-# # Calculation parameters
-# ndivX = max(1, int(180.0 / pi * wavelength / dx / mesh))
-# ndivY = max(1, int(180.0 / pi * wavelength / dy / mesh))
-# #
-# lsmaxX = int(NA * dx / MX / wavelength + 1)
-# lsmaxY = int(NA * dy / MY / wavelength + 1)
-# lpmaxX = int(NA * dx / MX * 2 / wavelength + 0.0001)
-# lpmaxY = int(NA * dy / MY * 2 / wavelength + 0.0001)
-# nsourceX = 2 * lsmaxX + 1
-# nsourceY = 2 * lsmaxY + 1
-# noutX = 2 * lpmaxX + 1
-# noutY = 2 * lpmaxY + 1
-# nsourceXL = 2 * lsmaxX + 10
-# nsourceYL = 2 * lsmaxY + 10
-# noutXL = 2 * lpmaxX + 10
-# noutYL = 2 * lpmaxY + 10
 
 
 class PolarizationDirection(Enum):

@@ -123,8 +123,8 @@ def electro_field(
                     m0s[isd],
                 )
             else:
-                kxplus = kx + 2 * np.pi * pupil_coords.linput[i] / sc.mask_width
-                kyplus = ky + 2 * np.pi * pupil_coords.minput[i] / sc.mask_height
+                kxplus = kx + sc.dkx * pupil_coords.linput[i]
+                kyplus = ky + sc.dky * pupil_coords.minput[i]
                 EAx, EAy, EAz = standard_na_electro_field(
                     sc, kxplus, kyplus, Ax_val, Ay_val
                 )

@@ -1,45 +1,48 @@
 import json
 import numpy as np
 import matplotlib.pyplot as plt
-from elitho import config
 import streamlit as st
-
-# Ensure project root is on sys.path so `elitho` can be imported when running
-# this file directly (for example with `streamlit run elitho/gui.py`).
 import os
 import sys
 
 try:
-    from elitho import illumination, source
+    from elitho import source, config, intensity
 except Exception:
     _here = os.path.dirname(__file__)
     _root = os.path.abspath(os.path.join(_here, os.pardir))
     if _root not in sys.path:
         sys.path.insert(0, _root)
-    from elitho import illumination, source
+    from elitho import source, config
 
 
-def simulate_psf(wl_nm, NA, img_size=512, pixels_per_um=50, sigma_factor=1.0):
-    """Approximate PSF: gaussian-like disk scaled by sigma_factor.
-
-    Returns (img_normalized, airy_radius_um)
-    """
-    wl_um = wl_nm / 1000.0
-    NA = max(1e-6, float(NA))
-    r_um = 1.22 * wl_um / NA
-    sigma_um = max(1e-6, r_um * sigma_factor)
-    half_size_um = img_size / (2.0 * pixels_per_um)
-    x = np.linspace(-half_size_um, half_size_um, img_size)
-    xv, yv = np.meshgrid(x, x)
-    rr2 = xv**2 + yv**2
-    sigma_pixels = sigma_um * pixels_per_um
-    sigma_pixels = max(1e-6, sigma_pixels)
-    img = np.exp(-rr2 / (2.0 * (sigma_pixels**2)))
-    img = img / img.max()
-    return img, r_um
+st.set_page_config(page_title="ELitho Simulation", layout="wide")
+st.title("ELitho Simulation")
 
 
-def generate_mask(width, height, opens, pixels_per_um=10):
+try:
+    with open("defaults.json", "r", encoding="utf-8") as f:
+        defaults = json.load(f)
+except Exception:
+    defaults = {
+        "wavelength": 13.5,
+        "NA": 0.33,
+        "mask_width": 1024,
+        "mask_height": 1024,
+        "magnification_x": 4,
+        "magnification_y": 4,
+        "mesh": 0.5,
+        "incidence_angle": -6.0,
+        "azimuthal_angle": 0.0,
+        "central_obscuration": 0.2,
+        "defocus_min_um": 0.0,
+        "absorber_complex_refractive_index": [0.9567 + 0.0343j],
+        "absorber_thickness": [60.0],
+    }
+
+
+def generate_mask(
+    width: float, height: float, opens: list[dict[str, float]], pixels_per_um: int = 10
+):
     width = max(1e-6, float(width))
     height = max(1e-6, float(height))
 
@@ -70,71 +73,27 @@ def generate_mask(width, height, opens, pixels_per_um=10):
     return mask
 
 
-st.set_page_config(page_title="ELitho Simulation", layout="wide")
-
-# CSS: comfortable margins
-st.markdown(
-    """
-    <style>
-    html, body, .main, .stApp {margin:0; padding:0}
-    .block-container{max-width:100% !important; padding-left:1.25rem !important; padding-right:1.25rem !important}
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-st.title("ELitho Simulation")
-
-
-try:
-    with open("defaults.json", "r", encoding="utf-8") as f:
-        defaults = json.load(f)
-except Exception:
-    defaults = {
-        "wavelength_nm": 13.5,
-        "NA": 0.55,
-        "incident_angle_deg": 0.0,
-        "azimuthal_angle_deg": 0.0,
-        "defocus_min_um": -1.0,
-        "defocus_max_um": 1.0,
-        "defocus_step_um": 0.1,
-        "magnification_y": 8.0,
-    }
-
-
-def generate_intensity():
-    pass
-
-
-@st.cache_data
-def generate_defocus_frames(
-    defocus_list, wavelength_nm, NA, img_size=512, pixels_per_um=50
-):
-    frames = []
-    profiles = []
-    for d in defocus_list:
-        sigma_factor = 1.0 + abs(float(d)) * 0.5
-        img, r_um = simulate_psf(
-            float(wavelength_nm),
-            float(NA),
-            img_size=img_size,
-            pixels_per_um=pixels_per_um,
-            sigma_factor=sigma_factor,
-        )
-        frames.append(img)
-        center = img.shape[0] // 2
-        profiles.append(img[center, :])
-    return frames, profiles
+def generate_intensities(sc: config.SimulationConfig, mask: np.ndarray) -> list:
+    results = []
+    for defocus in sc.defocus_list:
+        result = [defocus]
+        for polar in [config.PolarizationDirection.X, config.PolarizationDirection.Y]:
+            intensity_result = intensity.intensity(sc, mask, polar, defocus)
+            result.append(intensity_result)
+        unpolar_intensity_result = (result[-1] + result[-2]) / 2.0
+        result.append(unpolar_intensity_result)
+        results.append(tuple(result))
+    return results
 
 
 def render_inputs():
-    st.header("Optical Parameters")
+    st.subheader("Optical Parameters")
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         wavelength = st.number_input(
             "wavelength [nm]",
             min_value=0.0,
-            value=float(defaults.get("wavelength_nm", 13.5)),
+            value=float(defaults.get("wavelength", 13.5)),
             step=0.1,
             format="%.1f",
             key="wavelength",
@@ -153,31 +112,29 @@ def render_inputs():
         )
         prev_na = st.session_state.get("_prev_NA", None)
         if prev_na is None or float(prev_na) != float(NA):
-            st.session_state["magnification_x"] = 4.0
-            st.session_state["magnification_y"] = float(
-                defaults.get("magnification_y", 8.0)
-            )
+            if float(NA) == 0.33:
+                st.session_state["magnification_x"] = 4
+                st.session_state["magnification_y"] = 4
+            elif float(NA) == 0.55:
+                st.session_state["magnification_x"] = 4
+                st.session_state["magnification_y"] = 8
             st.session_state["_prev_NA"] = float(NA)
 
     with c2:
         magnification_x = st.number_input(
             "X magnification",
-            min_value=0.0,
-            value=float(st.session_state.get("magnification_x", 4.0)),
-            step=0.1,
-            format="%.1f",
+            min_value=0,
+            value=int(defaults.get("magnification_x", 4)),
+            step=1,
+            format="%d",
             key="magnification_x",
         )
         magnification_y = st.number_input(
             "Y magnification",
-            min_value=0.0,
-            value=float(
-                st.session_state.get(
-                    "magnification_y", defaults.get("magnification_y", 8.0)
-                )
-            ),
-            step=0.1,
-            format="%.1f",
+            min_value=0,
+            value=int(defaults.get("magnification_y", 4)),
+            step=1,
+            format="%d",
             key="magnification_y",
         )
         if float(NA) == 0.55:
@@ -185,7 +142,7 @@ def render_inputs():
                 "Central obscuration [fraction]",
                 min_value=0.0,
                 max_value=1.0,
-                value=0.0,
+                value=float(defaults.get("central_obscuration", 0.2)),
                 step=0.01,
                 format="%.2f",
                 key="central_obscuration",
@@ -195,15 +152,15 @@ def render_inputs():
 
     with c3:
         incidence_angle = st.number_input(
-            "incident angle [deg]",
-            value=float(defaults.get("incidence_angle_deg", 0.0)),
+            "incidence angle [deg]",
+            value=float(defaults.get("incidence_angle", -6.0)),
             step=0.1,
             format="%.1f",
             key="incidence_angle",
         )
         azimuthal_angle = st.number_input(
             "azimuthal angle [deg]",
-            value=float(defaults.get("azimuthal_angle_deg", 0.0)),
+            value=float(defaults.get("azimuthal_angle", 0.0)),
             step=0.1,
             format="%.1f",
             key="azimuthal_angle",
@@ -248,15 +205,23 @@ def render_inputs():
 
     st.markdown("---")
 
-    st.header("Absorber Parameters")
+    st.subheader("Absorber Parameters")
+    thickness = defaults.get("absorber_thickness", [])
+    complex_refractive_index = defaults.get("absorber_complex_refractive_index", [])
+    initial_n_layers = len(complex_refractive_index)
     num_layers = st.number_input(
-        "Number of layers", min_value=1, max_value=20, value=2, step=1, key="num_layers"
+        "Number of layers",
+        min_value=1,
+        max_value=20,
+        value=initial_n_layers,
+        step=1,
+        key="num_layers",
     )
     layers = []
-    for li in range(1, int(num_layers) + 1):
+    for li in range(0, int(num_layers)):
         # Display the first layer as "Layer 1 (top)"; keep other layers unchanged.
         # Comments are written in English per project request.
-        label = f"Layer {li} (top)" if li == 1 else f"Layer {li}"
+        label = f"Layer {li + 1} (top)" if li == 0 else f"Layer {li + 1}"
         with st.expander(label, expanded=True):
             st.markdown("Complex refractive index")
             a1, a2 = st.columns(2)
@@ -264,7 +229,7 @@ def render_inputs():
                 n_real = st.number_input(
                     "Real part (n)",
                     min_value=0.0,
-                    value=1.0,
+                    value=complex_refractive_index[li].real if li == 0 else 0.0,
                     step=0.0001,
                     format="%.4f",
                     key=f"layer_{li}_n",
@@ -273,7 +238,7 @@ def render_inputs():
                 k_imag = st.number_input(
                     "Imag part (k)",
                     min_value=0.0,
-                    value=0.0,
+                    value=complex_refractive_index[li].imag if li == 0 else 0.0,
                     step=0.0001,
                     format="%.4f",
                     key=f"layer_{li}_k",
@@ -281,7 +246,7 @@ def render_inputs():
             thickness = st.number_input(
                 "Thickness [nm]",
                 min_value=0.0,
-                value=50.0,
+                value=thickness[li] if li == 0 else 0.0,
                 step=0.1,
                 format="%.1f",
                 key=f"layer_{li}_thickness",
@@ -296,26 +261,26 @@ def render_inputs():
 
     st.markdown("---")
 
-    st.header("Mask Pattern Parameters")
+    st.subheader("Mask Pattern Parameters")
     mp_left, mp_right = st.columns([3, 1])
     with mp_left:
         tw, th = st.columns(2)
         with tw:
             mask_width = st.number_input(
                 "Mask width [nm]",
-                min_value=0.0,
-                value=100.0,
-                step=0.1,
-                format="%.1f",
+                min_value=0,
+                value=int(defaults.get("mask_width", 1024)),
+                step=10,
+                format="%d",
                 key="mask_width",
             )
         with th:
             mask_height = st.number_input(
                 "Mask height [nm]",
-                min_value=0.0,
-                value=100.0,
-                step=0.1,
-                format="%.1f",
+                min_value=0,
+                value=int(defaults.get("mask_height", 1024)),
+                step=10,
+                format="%d",
                 key="mask_height",
             )
         num_opens = st.number_input(
@@ -350,7 +315,7 @@ def render_inputs():
                     ow = st.number_input(
                         "width [nm]",
                         min_value=0.0,
-                        value=10.0,
+                        value=50.0,
                         step=0.1,
                         format="%.1f",
                         key=f"mask_open_{oi}_w",
@@ -359,7 +324,7 @@ def render_inputs():
                     oh = st.number_input(
                         "height [nm]",
                         min_value=0.0,
-                        value=10.0,
+                        value=50.0,
                         step=0.1,
                         format="%.1f",
                         key=f"mask_open_{oi}_h",
@@ -380,13 +345,13 @@ def render_inputs():
             axm.imshow(mask_arr, cmap="gray", origin="lower", interpolation="nearest")
             axm.axis("off")
             st.markdown("Mask preview (white = open)")
-            st.pyplot(fig_mask)
+            st.pyplot(fig_mask, width=256)
         except Exception as e:
             st.error(f"Unable to render mask preview: {e}")
 
     st.markdown("---")
 
-    st.header("Source Parameters")
+    st.subheader("Source Parameters")
     # Mesh input: allow the user to set the sampling mesh used in calculations.
     # Default to const.mesh when available, otherwise 0.50. Display with two decimals.
     mesh = st.number_input(
@@ -398,11 +363,11 @@ def render_inputs():
         key="mesh",
     )
 
-    sp_left, sp_right = st.columns([2, 2])
+    sp_left, sp_right = st.columns([2, 1])
     with sp_left:
         # Source type selection: choose illumination type for the simulation.
         # Options correspond to elitho.const.IlluminationType members.
-        _illum_options = [t.name for t in illumination.IlluminationType]
+        _illum_options = [t.name for t in config.IlluminationType]
         _default_illum = _illum_options[0]
         _default_index = (
             _illum_options.index(_default_illum)
@@ -417,9 +382,9 @@ def render_inputs():
         )
         # Map selected name to the enum value for downstream code compatibility.
         try:
-            source_type_enum = illumination.IlluminationType[source_type_name]
+            source_type_enum = config.IlluminationType[source_type_name]
         except Exception:
-            source_type_enum = illumination.IlluminationType.CIRCULAR
+            source_type_enum = config.IlluminationType.CIRCULAR
 
         # Conditional inputs depending on the chosen source type.
         # initial parameters
@@ -427,7 +392,7 @@ def render_inputs():
         inner_sigma = 0.55
         open_angle = 90.0
 
-        if source_type_enum == illumination.IlluminationType.CIRCULAR:
+        if source_type_enum == config.IlluminationType.CIRCULAR:
             outer_sigma = st.number_input(
                 "Outer sigma",
                 min_value=0.0,
@@ -436,9 +401,9 @@ def render_inputs():
                 format="%.2f",
                 key="outer_sigma",
             )
-            ill = illumination.CircularIllumination(outer_sigma=float(outer_sigma))
+            ill = config.CircularIllumination(outer_sigma=float(outer_sigma))
 
-        elif source_type_enum == illumination.IlluminationType.ANNULAR:
+        elif source_type_enum == config.IlluminationType.ANNULAR:
             outer_sigma = st.number_input(
                 "Outer sigma",
                 min_value=0.0,
@@ -455,14 +420,14 @@ def render_inputs():
                 format="%.2f",
                 key="inner_sigma",
             )
-            ill = illumination.AnnularIllumination(
+            ill = config.AnnularIllumination(
                 outer_sigma=float(outer_sigma),
                 inner_sigma=float(inner_sigma),
             )
 
         elif source_type_enum in (
-            illumination.IlluminationType.DIPOLE_X,
-            illumination.IlluminationType.DIPOLE_Y,
+            config.IlluminationType.DIPOLE_X,
+            config.IlluminationType.DIPOLE_Y,
         ):
             outer_sigma = st.number_input(
                 "Outer sigma",
@@ -488,7 +453,7 @@ def render_inputs():
                 format="%.1f",
                 key="open_angle",
             )
-            ill = illumination.DipoleIllumination(
+            ill = config.DipoleIllumination(
                 type=source_type_enum,
                 outer_sigma=float(outer_sigma),
                 inner_sigma=float(inner_sigma),
@@ -501,10 +466,11 @@ def render_inputs():
         wavelength=float(wavelength),
         NA=float(NA),
         is_high_na=NA > 0.33,
-        mask_width=float(mask_width),
-        mask_height=float(mask_height),
-        magnification_x=float(magnification_x),
-        magnification_y=float(magnification_y),
+        illumination=ill,
+        mask_width=int(mask_width),
+        mask_height=int(mask_height),
+        magnification_x=int(magnification_x),
+        magnification_y=int(magnification_y),
         mesh=float(mesh),
         incidence_angle=float(incidence_angle),
         azimuthal_angle=float(azimuthal_angle),
@@ -518,7 +484,7 @@ def render_inputs():
         try:
             k = 2.0 * np.pi / wavelength
             # dkx, dky, _ = source.uniform_k_source(sc, ill)
-            dkx, dky, _, _, _ = source.get_valid_source_points(sc, ill)
+            dkx, dky, _, _, _ = source.get_valid_source_points(sc)
             sxo = dkx / k / NA
             syo = dky / k / NA
             # Visualize source directions on a small figure using subplots
@@ -528,105 +494,85 @@ def render_inputs():
             ill_axi.set_xlim(-1.0, 1.0)
             ill_axi.set_ylim(-1.0, 1.0)
             st.markdown("**Illumination preview**")
-            st.pyplot(ill_fig)
+            st.pyplot(ill_fig, width=350)
         except Exception as e:
             st.error(f"Unable to render illumination preview: {e}")
 
-    return {
-        "simulation_config": sc,
-        "illumination": ill,
-    }
+    return sc, mask_arr
+
+
+def show_intensity(title: str, img: np.ndarray) -> None:
+    col1, col2 = st.columns([1, 3])
+    with col1:
+        st.markdown(title)
+    with col2:
+        fig_mask, axm = plt.subplots()
+        axm.imshow(img)
+        axm.axis("off")
+        st.pyplot(fig_mask, width=256)
 
 
 # Layout: two columns (inputs / results)
-main_col, side_col = st.columns([6, 4])
+# main_col, side_col = st.columns([6, 4], width=2048)
+main_col, side_col = st.columns([6, 4], width=3072)
 with main_col:
-    params = render_inputs()
+    sc, mask = render_inputs()
 
 with side_col:
-    st.header("Simulation Results")
+    st.subheader("Simulation Results")
     run = st.button("Run simulation")
     result_placeholder = st.empty()
 
-    # When Run pressed: generate frames and persist into session_state
+    # When Run pressed: generate intensities and persist into session_state
     if run:
-        sc = params.get("simulation_config")
-        ill = params.get("Illumination")
+        with st.spinner("Run simulation ..."):
+            defocus2intensities = generate_intensities(sc, mask)
+        st.session_state["_generated_intensity"] = defocus2intensities
 
-        with st.spinner("Generating frames for defocus sweep..."):
-            frames, profiles = generate_defocus_frames(sc, ill)
+    # If frames exist, show defocus-value slider and selected frame
+    if "_generated_intensity" in st.session_state:
 
-        # # store generated frames under internal keys (avoid clashing with widget keys)
-        # st.session_state["_generated_defocus_frames"] = frames
-        # st.session_state["_generated_defocus_profiles"] = profiles
-        # st.session_state["_generated_defocus_vals"] = defocus_vals
-        # st.session_state["_generated_defocus_step"] = defocus_step_val
-        # st.session_state["_generated_defocus_idx"] = 0
+        if len(st.session_state["_generated_intensity"]) == 1:
+            result = st.session_state["_generated_intensity"][0]
+            defocus_min, int_x_polar, int_y_polar, int_unpolar = result
+            with result_placeholder.container():
+                show_intensity("X Polarization", int_x_polar)
+                show_intensity("Y Polarization", int_y_polar)
+                show_intensity("Unpolarized", int_unpolar)
+        else:
+            pass
 
-    # # If frames exist, show defocus-value slider and selected frame
-    # if "_generated_defocus_frames" in st.session_state and st.session_state.get(
-    #     "_generated_defocus_frames"
-    # ):
-    #     frames = st.session_state["_generated_defocus_frames"]
-    #     profiles = st.session_state.get("_generated_defocus_profiles", [])
-    #     defocus_vals = st.session_state.get("_generated_defocus_vals", [0.0])
-    #     defocus_step_val = float(st.session_state.get("_generated_defocus_step", 0.1))
+        # default_idx = int(st.session_state.get("_generated_defocus_idx", 0))
+        # default_defocus = float(defocus_vals[default_idx]) if defocus_vals else 0.0
+        # defocus_selected = st.slider(
+        #     "Defocus [nm]",
+        #     min_value=def_min,
+        #     max_value=def_max,
+        #     value=default_defocus,
+        #     step=float(defocus_step_val),
+        #     format="%.3f",
+        #     key="defocus_value_slider",
+        # )
 
-    #     if "_generated_defocus_idx" not in st.session_state:
-    #         st.session_state["_generated_defocus_idx"] = 0
+        # idx = max(0, min(len(defocus_vals) - 1, int(idx)))
+        # st.session_state["_generated_defocus_idx"] = int(idx)
 
-    #     try:
-    #         def_min = float(defocus_vals[0])
-    #         def_max = float(defocus_vals[-1])
-    #     except Exception:
-    #         def_min = 0.0
-    #         def_max = 0.0
+        # sel_img = frames[int(idx)]
+        # sel_profile = profiles[int(idx)] if profiles else None
 
-    #     default_idx = int(st.session_state.get("_generated_defocus_idx", 0))
-    #     default_defocus = float(defocus_vals[default_idx]) if defocus_vals else 0.0
+        # fig, axs = plt.subplots(1, 2, figsize=(10, 4))
+        # ax = axs[0]
+        # im = ax.imshow(sel_img, cmap="inferno", origin="lower")
+        # ax.set_title(f"PSF (defocus={defocus_vals[int(idx)]:.3f} μm)")
+        # ax.axis("off")
+        # fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
 
-    #     defocus_selected = st.slider(
-    #         "Defocus [nm]",
-    #         min_value=def_min,
-    #         max_value=def_max,
-    #         value=default_defocus,
-    #         step=float(defocus_step_val),
-    #         format="%.3f",
-    #         key="defocus_value_slider",
-    #     )
+        # if sel_profile is not None:
+        #     axs[1].plot(sel_profile)
+        #     axs[1].set_title("Central cross-section")
+        #     axs[1].set_xlabel("pixel")
+        #     axs[1].set_ylabel("normalized intensity")
+        # else:
+        #     axs[1].axis("off")
 
-    #     # map selected defocus value to nearest index
-    #     try:
-    #         idx = int(
-    #             round(
-    #                 (float(defocus_selected) - float(defocus_vals[0]))
-    #                 / float(defocus_step_val)
-    #             )
-    #         )
-    #     except Exception:
-    #         idx = int(default_idx)
-    #     idx = max(0, min(len(defocus_vals) - 1, int(idx)))
-    #     st.session_state["_generated_defocus_idx"] = int(idx)
-
-    #     sel_img = frames[int(idx)]
-    #     sel_profile = profiles[int(idx)] if profiles else None
-
-    #     fig, axs = plt.subplots(1, 2, figsize=(10, 4))
-    #     ax = axs[0]
-    #     im = ax.imshow(sel_img, cmap="inferno", origin="lower")
-    #     ax.set_title(f"PSF (defocus={defocus_vals[int(idx)]:.3f} μm)")
-    #     ax.axis("off")
-    #     fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-
-    #     if sel_profile is not None:
-    #         axs[1].plot(sel_profile)
-    #         axs[1].set_title("Central cross-section")
-    #         axs[1].set_xlabel("pixel")
-    #         axs[1].set_ylabel("normalized intensity")
-    #     else:
-    #         axs[1].axis("off")
-
-    #     fig.tight_layout()
-
-    #     with result_placeholder.container():
-    #         st.pyplot(fig)
+        # fig.tight_layout()
