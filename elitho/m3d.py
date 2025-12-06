@@ -1,5 +1,5 @@
 import numpy as np
-from elitho import config, config
+from elitho import config, config, vector_potential
 
 
 def m3d_params(pupil_coords, dampxx):
@@ -88,7 +88,7 @@ def m3d_params(pupil_coords, dampxx):
 
 
 def m3d_from_mask(polar: config.PolarizationDirection, mask: np.ndarray) -> np.ndarray:
-    from elitho import diffraction_amplitude, descriptors, diffraction_order
+    from elitho import descriptors, diffraction_order
     from elitho.pupil import PupilCoordinates
 
     dod_narrow = descriptors.DiffractionOrderDescriptor(1.5)
@@ -104,10 +104,10 @@ def m3d_from_mask(polar: config.PolarizationDirection, mask: np.ndarray) -> np.n
         diffraction_order.rounded_diamond,
     )
     pupil_coords = PupilCoordinates(doc_wide.num_valid_diffraction_orders)
-    abxx, vcxx = diffraction_amplitude.absorber_and_vacuum_amplitudes(
+    abxx, vcxx = vector_potential.absorber_and_vacuum_amplitudes(
         polar, dod_wide, doc_narrow
     )
-    dampxx = diffraction_amplitude.compute_diffraction_difference(
+    dampxx = vector_potential.compute_diffraction_difference(
         polar, mask, abxx, vcxx, dod_wide, doc_wide
     )
     a0xx, axxx, ayxx = m3d_params(pupil_coords, dampxx)

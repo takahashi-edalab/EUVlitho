@@ -1,5 +1,6 @@
 import cupy as cp
-from elitho import config, descriptors
+import numpy as np
+from elitho import descriptors
 from elitho.utils import image_processing as ip
 
 
@@ -35,6 +36,8 @@ def coefficients(
     dod: descriptors.DiffractionOrderDescriptor,
 ) -> tuple["xp.ndarray", "xp.ndarray", "xp.ndarray", "xp.ndarray"]:
     xp = cp.get_array_module(mask_pattern)
+
+    mask_width, mask_height = mask_pattern.shape
 
     num_absorber_layers = len(absorption_amplitudes)
     epses = xp.zeros(
@@ -82,8 +85,8 @@ def coefficients(
             - 2 * dod.max_diffraction_order_y
         )
 
-        zetal = config.i_complex * 2 * np.pi * i_idx[:, None] / config.dx
-        zetam = config.i_complex * 2 * np.pi * j_idx[None, :] / config.dy
+        zetal = 1j * 2 * np.pi * i_idx[:, None] / mask_width
+        zetam = 1j * 2 * np.pi * j_idx[None, :] / mask_height
 
         eta = zetal * leps
         zeta = zetam * leps

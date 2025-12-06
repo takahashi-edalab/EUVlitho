@@ -9,7 +9,7 @@ class DiffractionOrderDescriptor:
     based on NA, sampling points, pixel size, and wavelength.
     """
 
-    def __init__(self, cutoff_factor: float) -> None:
+    def __init__(self, sc: config.SimulationConfig, cutoff_factor: float) -> None:
         """
         Initialize the descriptor.
 
@@ -20,6 +20,7 @@ class DiffractionOrderDescriptor:
         valid_region_fn : callable
             Function defining valid diffraction order region (e.g., ellipse, rounded_diamond).
         """
+        self._sc = sc
         self._cutoff_factor = cutoff_factor
 
     @cached_property
@@ -32,7 +33,7 @@ class DiffractionOrderDescriptor:
         float
             Spatial frequency cutoff in x-direction.
         """
-        return config.NA / config.MX * self._cutoff_factor
+        return self._sc.NA / self._sc.magnification_x * self._cutoff_factor
 
     @cached_property
     def spatial_freq_cutoff_y(self) -> float:
@@ -44,7 +45,7 @@ class DiffractionOrderDescriptor:
         float
             Spatial frequency cutoff in y-direction.
         """
-        return config.NA / config.MX * self._cutoff_factor
+        return self._sc.NA / self._sc.magnification_y * self._cutoff_factor
 
     @cached_property
     def max_diffraction_order_x(self) -> int:
@@ -56,7 +57,9 @@ class DiffractionOrderDescriptor:
         int
             Maximum diffraction order along x.
         """
-        return int(self.spatial_freq_cutoff_x * config.dx / config.wavelength)
+        return int(
+            self.spatial_freq_cutoff_x * self._sc.mask_width / self._sc.wavelength
+        )
 
     @cached_property
     def max_diffraction_order_y(self) -> int:
@@ -68,7 +71,9 @@ class DiffractionOrderDescriptor:
         int
             Maximum diffraction order along y.
         """
-        return int(self.spatial_freq_cutoff_y * config.dy / config.wavelength)
+        return int(
+            self.spatial_freq_cutoff_y * self._sc.mask_height / self._sc.wavelength
+        )
 
     @cached_property
     def num_diffraction_orders_x(self):

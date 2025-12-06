@@ -5,6 +5,7 @@ from elitho.absorber import absorber
 
 
 def calc_Ax(
+    sc: config.SimulationConfig,
     FG: "xp.ndarray",
     kx0: float,
     ky0: float,
@@ -12,32 +13,34 @@ def calc_Ax(
 ) -> "xp.ndarray":
     xp = cp.get_array_module(FG)
     Ax = xp.zeros(
-        (config.nsourceX, config.nsourceY, doc.num_valid_diffraction_orders),
+        (sc.nsourceX, sc.nsourceY, doc.num_valid_diffraction_orders),
         dtype=xp.complex128,
     )
-    for ls in range(-config.lsmaxX, config.lsmaxX + 1):
-        for ms in range(-config.lsmaxY, config.lsmaxY + 1):
-            if (ls * config.MX / config.dx) ** 2 + (
-                ms * config.MY / config.dy
-            ) ** 2 <= (config.NA / config.wavelength) ** 2:
-                kx = kx0 + ls * 2 * np.pi / config.dx
-                ky = ky0 + ms * 2 * np.pi / config.dy
-                kz = xp.sqrt(config.k**2 - kx**2 - ky**2)
+    for ls in range(-sc.lsmaxX, sc.lsmaxX + 1):
+        for ms in range(-sc.lsmaxY, sc.lsmaxY + 1):
+            if (ls * sc.magnification_x / sc.mask_width) ** 2 + (
+                ms * sc.magnification_y / sc.mask_height
+            ) ** 2 <= (sc.NA / sc.wavelength) ** 2:
+                kx = kx0 + ls * sc.dkx
+                ky = ky0 + ms * sc.dky
+                kz = xp.sqrt(sc.k**2 - kx**2 - ky**2)
                 Ax0p = 1.0
                 AS = xp.zeros(doc.num_valid_diffraction_orders, dtype=xp.complex128)
                 for i in range(doc.num_valid_diffraction_orders):
                     if doc.valid_x_coords[i] == ls and doc.valid_y_coords[i] == ms:
                         AS[i] = 2 * kz * Ax0p
+
                 FGA = FG @ AS
-                Ax[ls + config.lsmaxX][ms + config.lsmaxY] = -FGA
+                Ax[ls + sc.lsmaxX][ms + sc.lsmaxY] = -FGA
                 for i in range(doc.num_valid_diffraction_orders):
                     if doc.valid_x_coords[i] == ls and doc.valid_y_coords[i] == ms:
-                        Ax[ls + config.lsmaxX][ms + config.lsmaxY][i] += Ax0p
+                        Ax[ls + sc.lsmaxX][ms + sc.lsmaxY][i] += Ax0p
 
     return Ax
 
 
-def diffraction_amplitude(
+def vector_potential(
+    sc: config.SimulationConfig,
     polar: config.PolarizationDirection,
     mask2d: "xp.ndarray",
     kx0: float,
@@ -52,37 +55,31 @@ def diffraction_amplitude(
     )
 
     # --- 2. kxplus, kyplus, kxy2, klm
-    kxplus = kx0 + 2 * np.pi * xp.array(doc.valid_x_coords) / config.dx
-    kyplus = ky0 + 2 * np.pi * xp.array(doc.valid_y_coords) / config.dy
+    kxplus = kx0 + sc.dkx * xp.array(doc.valid_x_coords)
+    kyplus = ky0 + sc.dky * xp.array(doc.valid_y_coords)
     kxy2 = kxplus**2 + kyplus**2
 
     # --- 3.calc absorber sequencially from the most above layer ---
     U1U, U1B = multilayer.multilayer_transfer_matrix(
-        polar, doc.num_valid_diffraction_orders, kxplus, kyplus, kxy2
+        sc.k, polar, doc.num_valid_diffraction_orders, kxplus, kyplus, kxy2
     )
 
     # --- 4. calc initial B matrix ---
     if polar == config.PolarizationDirection.X:
-        Bru = xp.diag(
-            config.i_complex * config.k
-            - config.i_complex / config.k / config.epsilon_ru * kxplus**2
-        )
+        Bru = xp.diag(1j * sc.k - 1j / sc.k / config.epsilon_ru * kxplus**2)
     elif polar == config.PolarizationDirection.Y:
-        Bru = xp.diag(
-            config.i_complex * config.k
-            - config.i_complex / config.k / config.epsilon_ru * kyplus**2
-        )
+        Bru = xp.diag(1j * sc.k - 1j / sc.k / config.epsilon_ru * kyplus**2)
     else:
         raise ValueError("Invalid polarization direction")
 
     B = Bru
-    al = xp.sqrt(config.k**2 * config.epsilon_ru - kxy2)
+    al = xp.sqrt(sc.k**2 * config.epsilon_ru - kxy2)
     br = xp.eye(doc.num_valid_diffraction_orders, dtype=complex)
-    # for n in reversed(range(const.NABS)):
     for eps, eta, zeta, sigma, dab in reversed(
         list(zip(epsN, etaN, zetaN, sigmaN, config.absorber_layer_thicknesses))
     ):
         U1U, U1B, B, al, br = absorber(
+            sc.k,
             polar,
             dod,
             doc,
@@ -102,7 +99,7 @@ def diffraction_amplitude(
         )
 
     # --- 5. calc Ax ---
-    klm = xp.sqrt(config.k**2 - kxy2)
+    klm = xp.sqrt(sc.k**2 - kxy2)
     al_B = al * br
     klm_B = klm[:, xp.newaxis] * br
     T0L = klm_B + al_B
@@ -115,7 +112,7 @@ def diffraction_amplitude(
     FG = al_B / klm[:, xp.newaxis]
     FG = xp.matmul(FG, new_U1U)
     #
-    Ax = calc_Ax(FG, kx0, ky0, doc)
+    Ax = calc_Ax(sc, FG, kx0, ky0, doc)
 
     return Ax
 
@@ -179,7 +176,7 @@ def mask_amplitude(fmask, abxx, vcxx):
                     kxp = 2.0 * np.pi * (ip - config.lpmaxX) / config.dx
                     kyp = 2.0 * np.pi * (jp - config.lpmaxY) / config.dy
                     phasesp = np.exp(
-                        -config.i_complex
+                        -1j
                         * (
                             config.kx0 * kxp
                             + kxp**2 / 2

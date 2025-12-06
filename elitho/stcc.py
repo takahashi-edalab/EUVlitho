@@ -1,11 +1,11 @@
 import numpy as np
 from elitho import (
     config,
-    diffraction_amplitude,
     descriptors,
     diffraction_order,
     source,
     pupil,
+    vector_potential,
 )
 
 
@@ -416,7 +416,7 @@ def intensity(
 
     pupil_coords = pupil.PupilCoordinates(doc_wide.num_valid_diffraction_orders)
     uniform_k_source = source.UniformKSource()
-    amp_absorber, amp_vacuum, phasexx = diffraction_amplitude.zero_order_amplitude(
+    amp_absorber, amp_vacuum, phasexx = vector_potential.zero_order_amplitude(
         config.PolarizationDirection.X, dod_wide, doc_narrow
     )
 

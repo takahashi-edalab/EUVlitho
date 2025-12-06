@@ -28,6 +28,7 @@ def calc_sigma(
 
 
 def absorber(
+    k: float,
     polar: config.PolarizationDirection,
     dod: "descriptors.DiffractionOrderDescriptor",
     doc: "descriptors.DiffractionOrderDescriptor",
@@ -57,9 +58,9 @@ def absorber(
         + 2 * dod.max_diffraction_order_y
     )
     if polar == config.PolarizationDirection.X:
-        D = eps[l, m] * config.k**2 - config.i_complex * eta[l, m] * kxplus[None, :]
+        D = eps[l, m] * k**2 - 1j * eta[l, m] * kxplus[None, :]
     elif polar == config.PolarizationDirection.Y:
-        D = eps[l, m] * config.k**2 - config.i_complex * zeta[l, m] * kyplus[None, :]
+        D = eps[l, m] * k**2 - 1j * zeta[l, m] * kyplus[None, :]
     else:
         raise ValueError("Invalid polarization direction")
     D[
@@ -74,19 +75,19 @@ def absorber(
     Cjp = xp.linalg.solve(br1, br2)  # Cjp = np.linalg.inv(br1) @ br2
     new_sigma = calc_sigma(polar, dod, doc, kxplus, kyplus, sigma)
 
-    B1 = config.i_complex * (
-        config.k * br1
+    B1 = 1j * (
+        k * br1
         - xp.outer(
             kxplus if polar == config.PolarizationDirection.X else kyplus,
             xp.ones(doc.num_valid_diffraction_orders),
         )
-        / config.k
+        / k
         * new_sigma
         @ br1
     )
 
     Cj = xp.linalg.solve(B1, B2)  # Cj = np.linalg.inv(B1) @ B2
-    gamma = xp.exp(config.i_complex * al1 * dabs)
+    gamma = xp.exp(1j * al1 * dabs)
     T1UL = 0.5 * (Cj + xp.outer(1 / al1, al2) * Cjp) / gamma[:, None]
     T1UR = 0.5 * (Cj - xp.outer(1 / al1, al2) * Cjp) / gamma[:, None]
     T1BL = 0.5 * (Cj - xp.outer(1 / al1, al2) * Cjp) * gamma[:, None]

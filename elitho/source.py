@@ -8,6 +8,7 @@ def illumination_condition(
     skx: float | np.ndarray,
     sky: float | np.ndarray,
 ) -> bool | np.ndarray:
+
     if sc.illumination.type == config.IlluminationType.CIRCULAR:
         condition = (skx**2 + sky**2) <= (
             sc.k * sc.NA * sc.illumination.outer_sigma
@@ -36,7 +37,9 @@ def illumination_condition(
             & (r <= sc.k * sc.NA * sc.illumination.outer_sigma)
         ) & angle_condition
     else:
-        raise ValueError("Invalid illumination type")
+        raise ValueError(
+            f"Invalid illumination type: {sc.illumination.type.value} and {config.IlluminationType.DIPOLE_Y.value}"
+        )
     return condition
 
 
@@ -58,17 +61,17 @@ def get_valid_diffraction_orders(sc: config.SimulationConfig):
 def abbe_division_sampling(sc: config.SimulationConfig) -> tuple[dict, dict, dict]:
 
     ls, ms = get_valid_diffraction_orders(sc)
-    _, _, ldiv, mdiv, pdiv = get_valid_source_points(sc, sc.illumination)
+    _, _, ldiv, mdiv, pdiv = get_valid_source_points(sc)
 
     l0s = defaultdict(list)
     m0s = defaultdict(list)
     SDIV = defaultdict(int)
 
-    for nsx in range(-config.ndivX + 1, config.ndivX):
-        for nsy in range(-config.ndivY + 1, config.ndivY):
+    for nsx in range(-sc.ndivX + 1, sc.ndivX):
+        for nsy in range(-sc.ndivY + 1, sc.ndivY):
             for l, m in zip(ls, ms):
-                shifted_l = l * config.ndivX + nsx
-                shifted_m = m * config.ndivY + nsy
+                shifted_l = l * sc.ndivX + nsx
+                shifted_m = m * sc.ndivY + nsy
                 for i, (ld, md) in enumerate(zip(ldiv, mdiv)):
                     if all(
                         [

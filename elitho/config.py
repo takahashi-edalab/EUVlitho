@@ -1,7 +1,7 @@
 import numpy as np
 from abc import ABC, abstractmethod
 from enum import Enum, auto
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import ClassVar, Literal
 from functools import cached_property
 
@@ -108,7 +108,7 @@ class SimulationConfig:
     wavelength: float = 13.5  # nm
     NA: float = 0.33
     is_high_na: bool = False
-    illumination: Illumination = CircularIllumination()
+    illumination: Illumination = field(default_factory=lambda: CircularIllumination())
     mask_width: int = 1024  # nm
     mask_height: int = 1024  # nm
     mask_refinement_factor_x: int = 1
@@ -123,7 +123,7 @@ class SimulationConfig:
     defocus_max: float = None
     defocus_step: float = None
     # TODO:
-    cutoff_factor: float = 6.0
+    # cutoff_factor: float = 6.0
 
     @property
     def defocus_list(self) -> list:
@@ -140,31 +140,31 @@ class SimulationConfig:
             )
         )
 
-    @property
+    @cached_property
     def exposure_field_width(self):
         return self.mask_width // self.magnification_x
 
-    @property
+    @cached_property
     def exposure_field_height(self):
         return self.mask_height // self.magnification_y
 
-    @property
+    @cached_property
     def k(self):
         return 2.0 * np.pi / self.wavelength
 
-    @property
+    @cached_property
     def kX(self):
         return self.k * self.NA / self.magnification_x
 
-    @property
+    @cached_property
     def kY(self):
         return self.k * self.NA / self.magnification_y
 
-    @property
+    @cached_property
     def phi0(self):
-        return 90.0 - self.azimuth
+        return 90.0 - self.azimuthal_angle
 
-    @property
+    @cached_property
     def kx0(self):
         return (
             self.k
@@ -172,7 +172,7 @@ class SimulationConfig:
             * np.cos(np.deg2rad(self.phi0))
         )
 
-    @property
+    @cached_property
     def ky0(self):
         return (
             self.k
@@ -180,73 +180,73 @@ class SimulationConfig:
             * np.sin(np.deg2rad(self.phi0))
         )
 
-    @property
+    @cached_property
     def ndivX(self):
         return max(
             1, int(180.0 / np.pi * self.wavelength / self.mask_width / self.mesh)
         )
 
-    @property
+    @cached_property
     def ndivY(self):
         return max(
             1, int(180.0 / np.pi * self.wavelength / self.mask_height / self.mesh)
         )
 
-    @property
+    @cached_property
     def lsmaxX(self):
         return int(
             self.NA * self.mask_width / self.magnification_x / self.wavelength + 1
         )
 
-    @property
+    @cached_property
     def lsmaxY(self):
         return int(
             self.NA * self.mask_height / self.magnification_y / self.wavelength + 1
         )
 
-    @property
+    @cached_property
     def lpmaxX(self):
         return int(
             self.NA * self.mask_width / self.magnification_x * 2 / self.wavelength
             + 0.0001
         )
 
-    @property
+    @cached_property
     def lpmaxY(self):
         return int(
             self.NA * self.mask_height / self.magnification_y * 2 / self.wavelength
             + 0.0001
         )
 
-    @property
+    @cached_property
     def nsourceX(self):
         return 2 * self.lsmaxX + 1
 
-    @property
+    @cached_property
     def nsourceY(self):
         return 2 * self.lsmaxY + 1
 
-    @property
+    @cached_property
     def noutX(self):
         return 2 * self.lpmaxX + 1
 
-    @property
+    @cached_property
     def noutY(self):
         return 2 * self.lpmaxY + 1
 
-    @property
+    @cached_property
     def nsourceXL(self):
         return 2 * self.lsmaxX + 10
 
-    @property
+    @cached_property
     def nsourceYL(self):
         return 2 * self.lsmaxY + 10
 
-    @property
+    @cached_property
     def noutXL(self):
         return 2 * self.lpmaxX + 10
 
-    @property
+    @cached_property
     def noutYL(self):
         return 2 * self.lpmaxY + 10
 
