@@ -28,7 +28,7 @@ Execute cnn/cnn/predict/predict.py. Input: mask.bin (mask pattern). Output: inpu
 Execute cnn/intensity/linear/linear.py. Inputs: mask.bin, inputxx.csv. Outputs: intft.csv (image intensity of the thin mask model), intlinear.csv (image intensity calculated by Abbe's theory with M3D parameters).
 #### 2.3.2 STCC-SOCS formula with M3D parameters
 Execute cnn/intensity/stccsocs/socs.py. Inputs: mask.bin, inputxx.csv. Output: intsocs.csv (image intensity calculated by STCC-SOCS formula with M3D parameters). When this program is executed at the first time, the eigen functins of the SOCS model are calcuated and stored. This calculation will not be repeated in the second time.
-### 2.4 New data set generationn
+### 2.4 New data set generation
 Change the directory to cnn/cnn/data/train or validate. Modify mask.cpp to generate new mask patterns. Modify makem3d according to your enviroment. Modify "ndata" in m3d.cpp and compile it by "make -f makem3d." The calculation may take ~ 3 min for each mask pattern. After the calculation execute compress.py to rearrange the inputs for CNN.
 
 ### 2.5 References
