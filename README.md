@@ -1,3 +1,6 @@
+> [!NOTE]
+> We plan to release *elitho*, our Python-based EUV lithography simulator, once the paper is accepted.
+> 
 # EUVlitho
 EUVlitho includes the following two program sets.
 1. Electromagnetic simulator for EUV lithography based on the 3D waveguide model
