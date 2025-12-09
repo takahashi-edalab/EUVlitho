@@ -14,8 +14,8 @@ The following paper explains the details of the programs.
 
 ## 2. CNN for fast EUV lithography simulation
 ### 2.1 Requirements
--CNN test (python) : Pytorch Ligtning (2.1.0) and CUDA (12.9).
--New data set generation (C++): OpenBLAS, Eigen (3.4.0), CUDA (12.9) and MAGMA (2.9.0).  
+- CNN test (python) : Pytorch Ligtning (2.1.0) and CUDA (12.9).
+- New data set generation (C++): OpenBLAS, Eigen (3.4.0), CUDA (12.9) and MAGMA (2.9.0).  
 ### 2.2 CNN test
 #### 2.2.1 Traing test data
 Expand cnn/cnn/data.tar.gz.
