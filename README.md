@@ -1,6 +1,3 @@
-> [!NOTE]
-> We plan to release *elitho*, our Python-based EUV lithography simulator, once the paper is accepted.
-> 
 # EUVlitho
 EUVlitho includes the following two program sets.
 1. Electromagnetic simulator for high-NA EUV lithography (elitho)
@@ -10,6 +7,7 @@ The following paper explains the details of the programs.
 - H. Tanabe, M. Shimode and A. Takahashi, "Rigorous electromagnetic simulator for extreme ultraviolet lithography and convolutional neural network reproducing electromagnetic simulations," JM3 24(2025)024201. https://doi.org/10.1117/1.JMM.24.2.024201.
 - H. Tanabe, M. Sugiyama, M. Shimode and A. Takahashi, "STCC formula including polarization and M3D effects in high-NA EUV lithography," SPIE Advance Lithography 2026, 13979-15, to be published. 
 ## 1. EUV lithography simulator (elitho)
+See details in [this repository](https://github.com/takahashi-edalab/elitho).
 
 
 ## 2. CNN for fast EUV lithography simulation
