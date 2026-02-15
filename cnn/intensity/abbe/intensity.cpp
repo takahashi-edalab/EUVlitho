@@ -13,7 +13,8 @@ using namespace std::chrono;
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <cufft.h>
-#include "magma_v2.h"
+#include <cublas_v2.h>
+#include <cusolverDn.h>
 #include "../../include/header.h"
 
 vector<bool> decompressBits(vector<uint8_t>& bytes, size_t originalBitCount) {
@@ -33,7 +34,10 @@ int&ndivs, vector<vector<vector<int>>>& l0s,vector<vector<vector<int>>>& m0s,vec
 
 int main (int argc,char* argv[])
 {
- magma_init();
+ std::chrono::system_clock::time_point  start, now;
+ double elapsed;
+ start = std::chrono::system_clock::now(); 
+
  char com;
  ofstream ofsint;
 
@@ -410,7 +414,9 @@ for(int nsy=0;nsy<ndivs;nsy++)
  cudaFree(d_fnx);
  cudaFree(d_fny);
  cudaFree(d_fnz);
- magma_finalize();
+ now = std::chrono::system_clock::now(); 
+ elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now-start).count();
+ cout<<"elapsed time (s) "<<elapsed/1000.<<endl;
  return 0;
 }
 

@@ -372,28 +372,47 @@ void absorberS(char polar,int LMAX,int MMAX,int Nrange,const vector<int>& lindex
       Eigen::MatrixXcd& B1,Eigen::MatrixXcd& U1U,Eigen::MatrixXcd& U1B)
 {
  complex<double> zi (0., 1.);
- magma_vec_t  jobvl,jobvr;
- magmaDoubleComplex *h_R, *VL, *VR, *h_work, *w1,*w2;
- double *rwork;
- magma_int_t N, n2, lda, nb, lwork, lwork2, info,ngpu;
- jobvl = MagmaNoVec;
- jobvr = MagmaVec; 
- N=Nrange;
- lda=N;
- n2    = lda*N;
- nb    = magma_get_zgehrd_nb(N);
- ngpu=magma_num_gpus();
- lwork = N*(1 + 2*nb+ngpu*nb);
- lwork2 = max( lwork, N*(5 + 2*N) );            
- magma_zmalloc_cpu( &w1,     N );
- magma_zmalloc_cpu( &w2,     N );
- magma_dmalloc_cpu( &rwork,  2*N );
- magma_zmalloc_pinned( &h_R,    n2 );
- magma_zmalloc_pinned( &VL,     n2 );
- magma_zmalloc_pinned( &VR,     n2 );
- magma_zmalloc_pinned( &h_work, lwork2 );
+ cusolverDnHandle_t cusolverH = NULL;
+ cudaStream_t stream = NULL;
+ cusolverDnParams_t params = NULL;
+ using data_type = cuDoubleComplex;
+ cudaDataType dataTypeA =CUDA_C_64F ;
+ cudaDataType dataTypeW =CUDA_C_64F ;
+ cudaDataType dataTypeVL =CUDA_C_64F ;
+ cudaDataType dataTypeVR =CUDA_C_64F ;
+ cudaDataType computeType =CUDA_C_64F ;
+ int64_t n = Nrange;
+ int N=n;
+ int64_t lda = n;
+ cusolverEigMode_t jobvl = CUSOLVER_EIG_MODE_NOVECTOR; // not compute eigenvalues and eigenvectors.
+ cusolverEigMode_t jobvr = CUSOLVER_EIG_MODE_VECTOR; // compute eigenvalues and eigenvectors.
+ int64_t ldvl = 1;
+ int64_t ldvr = n;
+ std::vector<data_type> A(n*n) ;
+//    std::vector<data_type> VL(lda * n); // eigenvectors
+ std::vector<data_type> VR(lda * n); // eigenvectors
+ std::vector<data_type> W(n);       // eigenvalues
+ data_type *d_A = nullptr;
+ data_type *d_W = nullptr;
+ data_type *d_VL = nullptr;
+ data_type *d_VR = nullptr;
+ int *d_info = nullptr;
+ int info = 0;
+ size_t workspaceInBytesOnDevice = 0; /* size of workspace */
+ void *d_work = nullptr; /* device workspace */
+ size_t workspaceInBytesOnHost = 0; /* size of workspace */
+ void *h_work = nullptr; /* host workspace for */
+ /* step 1: create cusolver handle, bind a stream */
+ cusolverDnCreate(&cusolverH);
+ cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
+ cusolverDnSetStream(cusolverH, stream);
+ cusolverDnCreateParams(&params);
+ cudaMalloc(reinterpret_cast<void **>(&d_A), sizeof(data_type) * A.size());
+ cudaMalloc(reinterpret_cast<void **>(&d_W), sizeof(data_type) * W.size());
+//    cudaMalloc(reinterpret_cast<void **>(&d_VL), sizeof(data_type) * VL.size());
+ cudaMalloc(reinterpret_cast<void **>(&d_VR), sizeof(data_type) * VR.size());
+ cudaMalloc(reinterpret_cast<void **>(&d_info), sizeof(int));
 
- vector< complex<double> > al1sq(Nrange);
  {
   Eigen::MatrixXcd D(Nrange,Nrange);
    #pragma omp parallel for
@@ -413,51 +432,95 @@ void absorberS(char polar,int LMAX,int MMAX,int Nrange,const vector<int>& lindex
     }
    }
   }
-
-/*
- Eigen::ComplexEigenSolver<Eigen::MatrixXcd> eigensolver(D);
-#pragma omp parallel for
-  for(int i=0;i<Nrange;i++)
- {
-  al1sq[i]=eigensolver.eigenvalues()(i);
-  for(int j=0;j<Nrange;j++)
-  {
-   br1[j](i)=eigensolver.eigenvectors()(i,j);
-  }
- }
-}
-*/
-
   #pragma omp parallel for
   for(int i=0;i<Nrange;i++)
   {
    for(int j=0;j<Nrange;j++)
    {
-     h_R[i+j*N]=MAGMA_Z_MAKE(real(D(i,j)),imag(D(i,j)));
+     A[i+j*N]=make_cuDoubleComplex(real(D(i,j)),imag(D(i,j)));
    }
   }
  }
+ cudaMemcpyAsync(d_A, A.data(), sizeof(data_type) * A.size(), cudaMemcpyHostToDevice,
+                               stream);
+// step 3: query working space of geev
+    cusolverDnXgeev_bufferSize(
+    cusolverH,
+    params,
+    jobvl,
+    jobvr,
+    n,
+    dataTypeA,
+    d_A,
+    lda,
+    dataTypeW,
+    d_W,
+    dataTypeVL,
+    d_VL,
+    ldvl,
+    dataTypeVR,
+    d_VR,
+    ldvr,
+    computeType,
+    &workspaceInBytesOnDevice,
+    &workspaceInBytesOnHost);
+    cudaMallocHost(&h_work, workspaceInBytesOnHost); // pinned host memory for best performance
+    cudaMalloc(&d_work, workspaceInBytesOnDevice);
+ // step 4: compute spectrum
+   cusolverDnXgeev(
+     cusolverH,
+     params,
+    jobvl,
+    jobvr,
+    n,
+    dataTypeA,
+    d_A,
+    lda,
+    dataTypeW,
+    d_W,
+    dataTypeVL,
+    d_VL,
+    ldvl,
+    dataTypeVR,
+    d_VR,
+    ldvr,
+    computeType,
+    d_work,
+    workspaceInBytesOnDevice,
+    h_work,
+    workspaceInBytesOnHost,
+    d_info);
 
- magma_zgeev_m( jobvl, jobvr,N, h_R, lda, w1,VL, lda, VR, lda,h_work, lwork, rwork, &info );
- if(info!=0)   cout<<"zgeev "<<info<<endl;
+  cudaMemcpyAsync(VR.data(), d_VR, sizeof(data_type) * VR.size(), cudaMemcpyDeviceToHost,
+                               stream);
+  cudaMemcpyAsync(W.data(), d_W, sizeof(data_type) * W.size(), cudaMemcpyDeviceToHost,
+                               stream);
+  cudaMemcpyAsync(&info, d_info, sizeof(int), cudaMemcpyDeviceToHost, stream);
+  cudaStreamSynchronize(stream);
 
- #pragma omp parallel for
+ vector< complex<double> > al1sq(Nrange);
+// #pragma omp parallel for
  for(int i=0;i<Nrange;i++)
  {
-  al1sq[i]=MAGMA_Z_REAL(w1[i])+zi*MAGMA_Z_IMAG(w1[i]);
+  al1sq[i]=complex<double>(cuCreal(W[i]), cuCimag(W[i]));
+// if(i<10) cout<<al1sq[i]<<"eigen value"<<endl;
   for(int j=0;j<Nrange;j++)
   {
-   br1[i](j)=MAGMA_Z_REAL(VR[i*N+j])+zi*MAGMA_Z_IMAG(VR[i*N+j]);
+   br1[i](j)=complex<double>(cuCreal(VR[i*N+j]), cuCimag(VR[i*N+j]));
+// if((i<10)&&(abs(br1[i](j))>0.3)) cout<<j<<" "<<br1[i](j)<<endl;
   }
  }
 
- magma_free_cpu(w1);
- magma_free_cpu(w2);
- magma_free_cpu(rwork);
- magma_free_pinned(h_R);
- magma_free_pinned(VL);
- magma_free_pinned(VR);
- magma_free_pinned(h_work);
+ /* free resources */
+    cudaFree(d_A);
+    cudaFree(d_W);
+    cudaFree(d_VL);
+//    cudaFree(d_VR);
+    cudaFree(d_info);
+    cudaFree(d_work);
+    cudaFreeHost(h_work);
+    cusolverDnDestroy(cusolverH);
+    cudaStreamDestroy(stream);
 
  for (int i = 0; i<Nrange; i++)
  {
@@ -696,28 +759,47 @@ void absorberS0(char polar,int LMAX,int MMAX,int Nrange,const vector<int>& linde
       Eigen::MatrixXcd& B1,Eigen::MatrixXcd& U1U,Eigen::MatrixXcd& U1B)
 {
  complex<double> zi (0., 1.);
- magma_vec_t  jobvl,jobvr;
- magmaDoubleComplex *h_R, *VL, *VR, *h_work, *w1,*w2;
- double *rwork;
- magma_int_t N, n2, lda, nb, lwork, lwork2, info,ngpu;
- jobvl = MagmaNoVec;
- jobvr = MagmaVec; 
- N=Nrange;
- lda=N;
- n2    = lda*N;
- nb    = magma_get_zgehrd_nb(N);
- ngpu=magma_num_gpus();
- lwork = N*(1 + 2*nb+ngpu*nb);
- lwork2 = max( lwork, N*(5 + 2*N) );            
- magma_zmalloc_cpu( &w1,     N );
- magma_zmalloc_cpu( &w2,     N );
- magma_dmalloc_cpu( &rwork,  2*N );
- magma_zmalloc_pinned( &h_R,    n2 );
- magma_zmalloc_pinned( &VL,     n2 );
- magma_zmalloc_pinned( &VR,     n2 );
- magma_zmalloc_pinned( &h_work, lwork2 );
+ cusolverDnHandle_t cusolverH = NULL;
+ cudaStream_t stream = NULL;
+ cusolverDnParams_t params = NULL;
+ using data_type = cuDoubleComplex;
+ cudaDataType dataTypeA =CUDA_C_64F ;
+ cudaDataType dataTypeW =CUDA_C_64F ;
+ cudaDataType dataTypeVL =CUDA_C_64F ;
+ cudaDataType dataTypeVR =CUDA_C_64F ;
+ cudaDataType computeType =CUDA_C_64F ;
+ int64_t n = Nrange;
+ int N=n;
+ int64_t lda = n;
+ cusolverEigMode_t jobvl = CUSOLVER_EIG_MODE_NOVECTOR; // not compute eigenvalues and eigenvectors.
+ cusolverEigMode_t jobvr = CUSOLVER_EIG_MODE_VECTOR; // compute eigenvalues and eigenvectors.
+ int64_t ldvl = 1;
+ int64_t ldvr = n;
+ std::vector<data_type> A(n*n) ;
+//    std::vector<data_type> VL(lda * n); // eigenvectors
+ std::vector<data_type> VR(lda * n); // eigenvectors
+ std::vector<data_type> W(n);       // eigenvalues
+ data_type *d_A = nullptr;
+ data_type *d_W = nullptr;
+ data_type *d_VL = nullptr;
+ data_type *d_VR = nullptr;
+ int *d_info = nullptr;
+ int info = 0;
+ size_t workspaceInBytesOnDevice = 0; /* size of workspace */
+ void *d_work = nullptr; /* device workspace */
+ size_t workspaceInBytesOnHost = 0; /* size of workspace */
+ void *h_work = nullptr; /* host workspace for */
+ /* step 1: create cusolver handle, bind a stream */
+ cusolverDnCreate(&cusolverH);
+ cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
+ cusolverDnSetStream(cusolverH, stream);
+ cusolverDnCreateParams(&params);
+ cudaMalloc(reinterpret_cast<void **>(&d_A), sizeof(data_type) * A.size());
+ cudaMalloc(reinterpret_cast<void **>(&d_W), sizeof(data_type) * W.size());
+//    cudaMalloc(reinterpret_cast<void **>(&d_VL), sizeof(data_type) * VL.size());
+ cudaMalloc(reinterpret_cast<void **>(&d_VR), sizeof(data_type) * VR.size());
+ cudaMalloc(reinterpret_cast<void **>(&d_info), sizeof(int));
 
- vector< complex<double> > al1sq(Nrange);
  {
   Eigen::MatrixXcd D(Nrange,Nrange);
    #pragma omp parallel for
@@ -737,51 +819,95 @@ void absorberS0(char polar,int LMAX,int MMAX,int Nrange,const vector<int>& linde
     }
    }
   }
-
-/*
- Eigen::ComplexEigenSolver<Eigen::MatrixXcd> eigensolver(D);
-#pragma omp parallel for
-  for(int i=0;i<Nrange;i++)
- {
-  al1sq[i]=eigensolver.eigenvalues()(i);
-  for(int j=0;j<Nrange;j++)
-  {
-   br1[j](i)=eigensolver.eigenvectors()(i,j);
-  }
- }
-}
-*/
-
   #pragma omp parallel for
   for(int i=0;i<Nrange;i++)
   {
    for(int j=0;j<Nrange;j++)
    {
-     h_R[i+j*N]=MAGMA_Z_MAKE(real(D(i,j)),imag(D(i,j)));
+     A[i+j*N]=make_cuDoubleComplex(real(D(i,j)),imag(D(i,j)));
    }
   }
  }
+ cudaMemcpyAsync(d_A, A.data(), sizeof(data_type) * A.size(), cudaMemcpyHostToDevice,
+                               stream);
+// step 3: query working space of geev
+    cusolverDnXgeev_bufferSize(
+    cusolverH,
+    params,
+    jobvl,
+    jobvr,
+    n,
+    dataTypeA,
+    d_A,
+    lda,
+    dataTypeW,
+    d_W,
+    dataTypeVL,
+    d_VL,
+    ldvl,
+    dataTypeVR,
+    d_VR,
+    ldvr,
+    computeType,
+    &workspaceInBytesOnDevice,
+    &workspaceInBytesOnHost);
+    cudaMallocHost(&h_work, workspaceInBytesOnHost); // pinned host memory for best performance
+    cudaMalloc(&d_work, workspaceInBytesOnDevice);
+ // step 4: compute spectrum
+   cusolverDnXgeev(
+     cusolverH,
+     params,
+    jobvl,
+    jobvr,
+    n,
+    dataTypeA,
+    d_A,
+    lda,
+    dataTypeW,
+    d_W,
+    dataTypeVL,
+    d_VL,
+    ldvl,
+    dataTypeVR,
+    d_VR,
+    ldvr,
+    computeType,
+    d_work,
+    workspaceInBytesOnDevice,
+    h_work,
+    workspaceInBytesOnHost,
+    d_info);
 
- magma_zgeev_m( jobvl, jobvr,N, h_R, lda, w1,VL, lda, VR, lda,h_work, lwork, rwork, &info );
- if(info!=0)   cout<<"zgeev "<<info<<endl;
+  cudaMemcpyAsync(VR.data(), d_VR, sizeof(data_type) * VR.size(), cudaMemcpyDeviceToHost,
+                               stream);
+  cudaMemcpyAsync(W.data(), d_W, sizeof(data_type) * W.size(), cudaMemcpyDeviceToHost,
+                               stream);
+  cudaMemcpyAsync(&info, d_info, sizeof(int), cudaMemcpyDeviceToHost, stream);
+  cudaStreamSynchronize(stream);
 
- #pragma omp parallel for
+ vector< complex<double> > al1sq(Nrange);
+// #pragma omp parallel for
  for(int i=0;i<Nrange;i++)
  {
-  al1sq[i]=MAGMA_Z_REAL(w1[i])+zi*MAGMA_Z_IMAG(w1[i]);
+  al1sq[i]=complex<double>(cuCreal(W[i]), cuCimag(W[i]));
+// if(i<10) cout<<al1sq[i]<<"eigen value"<<endl;
   for(int j=0;j<Nrange;j++)
   {
-   br1[i](j)=MAGMA_Z_REAL(VR[i*N+j])+zi*MAGMA_Z_IMAG(VR[i*N+j]);
+   br1[i](j)=complex<double>(cuCreal(VR[i*N+j]), cuCimag(VR[i*N+j]));
+// if((i<10)&&(abs(br1[i](j))>0.3)) cout<<j<<" "<<br1[i](j)<<endl;
   }
  }
 
- magma_free_cpu(w1);
- magma_free_cpu(w2);
- magma_free_cpu(rwork);
- magma_free_pinned(h_R);
- magma_free_pinned(VL);
- magma_free_pinned(VR);
- magma_free_pinned(h_work);
+ /* free resources */
+    cudaFree(d_A);
+    cudaFree(d_W);
+    cudaFree(d_VL);
+//    cudaFree(d_VR);
+    cudaFree(d_info);
+    cudaFree(d_work);
+    cudaFreeHost(h_work);
+    cusolverDnDestroy(cusolverH);
+    cudaStreamDestroy(stream);
 
  for (int i = 0; i<Nrange; i++)
  {
@@ -1186,6 +1312,7 @@ void ampS(char polar, vector<vector<Eigen::VectorXcd>>& Ax, int NDIVX, int NDIVY
  sigma1 = sigmaN[n];
  absorberS0(polar,LMAX,MMAX,Nrange,lindex,mindex,k,kxplus,kyplus,kxy2,eps1,eta1,zeta1,
    sigma1,dabs1,alru,brru,Bru,URUU,URUB,al1,br1,B1,U1U,U1B);
+
  for (n = NABS - 2; n >= 0; n--)
  {
   dabs1 = dabs[n];
@@ -1317,105 +1444,156 @@ void ampS(char polar, vector<vector<Eigen::VectorXcd>>& Ax, int NDIVX, int NDIVY
  }
 }
 
-void matinv(int Nrange, Eigen::MatrixXcd& A,Eigen::MatrixXcd& Ainv)
+void matinv(int Nrange, Eigen::MatrixXcd& Aeig,Eigen::MatrixXcd& Ainv)
 {
  if(Nrange>5000)
  {
- complex<double>zi(0.,1.);
- magmaDoubleComplex *mA, *dwork;
- magma_int_t N,n2,*ipiv,info,nb,lwork;
- N=Nrange;
- n2=N*N;
- nb = magma_get_zgetri_nb(N);
- lwork = N*nb;
- magma_zmalloc_pinned( &mA,    n2 );
- magma_imalloc_pinned( &ipiv,    N );
- magma_zmalloc( &dwork,  lwork );
-#pragma omp parallel for
+ cusolverDnHandle_t cusolverH = NULL;
+ cudaStream_t stream = NULL;
+ using data_type = cuDoubleComplex;
+ cudaDataType datatypeA =CUDA_C_64F ;
+ const int64_t m = Nrange;
+ const int64_t lda = m;
+ const int64_t ldb = m;
+ Eigen::MatrixXcd Beig=Eigen::MatrixXcd::Identity(Nrange,Nrange);
+ std::vector<data_type> A (m*m),B(m*m);
+ #pragma omp parallel for
  for(int i=0;i<Nrange;i++)
  for(int j=0;j<Nrange;j++)
-    mA[i+j*Nrange]=MAGMA_Z_MAKE(real(A(i,j)),imag(A(i,j)));
-
-  magmaDoubleComplex *dA;
-  info=magma_zmalloc( &dA,    n2 );
-  if(info!=0)    cout<<"zmalloc "<<magma_strerror(info)<<endl;
-  magma_queue_t queue;
-  magma_queue_create(0, &queue);
-  magma_zsetmatrix(N,N,mA,N,dA,N,queue);
-  magma_zgetrf_gpu(N, N, dA, N,  ipiv, &info );
-   if(info!=0)     cout<<"zgetrf "<<info<<endl;
-  magma_zgetri_gpu(N,dA, N,  ipiv, dwork,lwork,&info );
-  if(info!=0)    cout<<"zgetri "<<info<<endl;
-  magma_zgetmatrix(N,N,dA,N,mA,N,queue);
-
-  #pragma omp parallel for
-  for(int i=0;i<Nrange;i++)
-  for(int j=0;j<Nrange;j++)
-   Ainv(i,j)=MAGMA_Z_REAL(mA[j*N+i])+zi*MAGMA_Z_IMAG(mA[j*N+i]);
-  magma_free(dA);
-  magma_free_pinned(mA);
-  magma_free_pinned(ipiv);
-  magma_free(dwork);
-  magma_queue_destroy(queue);
+ {
+   A[i+j*m]=make_cuDoubleComplex(real(Aeig(i,j)),imag(Aeig(i,j)));
+   B[i+j*m]=make_cuDoubleComplex(real(Beig(i,j)),imag(Beig(i,j)));
+ }
+ std::vector<data_type> X(m*m);
+//    std::vector<data_type> LU(lda * m);
+ std::vector<int64_t> Ipiv(m*m);
+ int info = 0;
+ data_type *d_A = nullptr;  /* device copy of A */
+ data_type *d_B = nullptr;  /* device copy of B */
+ int64_t *d_Ipiv = nullptr; /* pivoting sequence */
+ int *d_info = nullptr;     /* error info */
+ size_t workspaceInBytesOnDevice = 0; /* size of workspace */
+ void *d_work = nullptr;              /* device workspace for getrf */
+ size_t workspaceInBytesOnHost = 0;   /* size of workspace */
+ void *h_work = nullptr;              /* host workspace for getrf */
+ /* step 1: create cusolver handle, bind a stream */
+ cusolverDnCreate(&cusolverH);
+ cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
+ cusolverDnSetStream(cusolverH, stream);
+ /* Create advanced params */
+ cusolverDnParams_t params;
+ cusolverDnCreateParams(&params);
+ cusolverDnSetAdvOptions(params, CUSOLVERDN_GETRF, CUSOLVER_ALG_0);
+  /* step 2: copy A to device */
+ cudaMalloc(reinterpret_cast<void **>(&d_A), sizeof(data_type) * A.size());
+ cudaMalloc(reinterpret_cast<void **>(&d_B), sizeof(data_type) * B.size());
+ cudaMalloc(reinterpret_cast<void **>(&d_Ipiv), sizeof(int64_t) * Ipiv.size());
+ cudaMalloc(reinterpret_cast<void **>(&d_info), sizeof(int));
+ cudaMemcpyAsync(d_A, A.data(), sizeof(data_type) * A.size(), cudaMemcpyHostToDevice,
+                            stream);
+ cudaMemcpyAsync(d_B, B.data(), sizeof(data_type) * B.size(), cudaMemcpyHostToDevice,
+                            stream);
+ /* step 3: query working space of getrf */
+ cusolverDnXgetrf_bufferSize(cusolverH, params, m, m, datatypeA, d_A,lda, datatypeA,
+                       &workspaceInBytesOnDevice,&workspaceInBytesOnHost);
+ cudaMallocHost(&h_work, workspaceInBytesOnHost); // pinned host memory for best performance
+ cudaMalloc(reinterpret_cast<void **>(&d_work), workspaceInBytesOnDevice);
+ /* step 4: LU factorization */
+  cusolverDnXgetrf(cusolverH, params, m, m, datatypeA,d_A, lda, d_Ipiv, datatypeA, d_work,
+                            workspaceInBytesOnDevice, h_work, workspaceInBytesOnHost, d_info);
+//     cudaMemcpyAsync(Ipiv.data(), d_Ipiv, sizeof(int64_t) * Ipiv.size(),
+//                                   cudaMemcpyDeviceToHost, stream);
+//    cudaMemcpyAsync(LU.data(), d_A, sizeof(data_type) * A.size(), cudaMemcpyDeviceToHost,
+//                               stream);
+    cudaMemcpyAsync(&info, d_info, sizeof(int), cudaMemcpyDeviceToHost, stream);
+    cudaStreamSynchronize(stream);
+ /* step 5: solve A*X = B  */
+ cusolverDnXgetrs(cusolverH, params, CUBLAS_OP_N, m, m, datatypeA, d_A, lda, d_Ipiv,
+                                     datatypeA, d_B, ldb, d_info);
+ cudaMemcpyAsync(X.data(), d_B, sizeof(data_type) * X.size(), cudaMemcpyDeviceToHost,stream);
+ cudaStreamSynchronize(stream);
+ #pragma omp parallel for
+ for(int i=0;i<Nrange;i++)
+ for(int j=0;j<Nrange;j++)
+   Ainv(i,j)=complex<double>(cuCreal(X[i+j*m]), cuCimag(X[i+j*m]));
+ /* free resources */
+ cudaFree(d_A);
+ cudaFree(d_B);
+ cudaFree(d_Ipiv);
+ cudaFree(d_info);
+ cudaFree(d_work);
+ cudaFreeHost(h_work);
+ cusolverDnDestroyParams(params);
+ cusolverDnDestroy(cusolverH);
+ cudaStreamDestroy(stream);
  }
  else
  {
  Ainv.setIdentity();
- Ainv=A.colPivHouseholderQr().solve(Ainv);
-// Ainv=A.partialPivLu().solve(Ainv);
+ Ainv=Aeig.colPivHouseholderQr().solve(Ainv);
+// Ainv=Aeig.partialPivLu().solve(Ainv);
  }
 }
 
-void matproduct(int Nrange, Eigen::MatrixXcd& A,Eigen::MatrixXcd& B,Eigen::MatrixXcd& C)
+void matproduct(int Nrange, Eigen::MatrixXcd& Aeig,Eigen::MatrixXcd& Beig,Eigen::MatrixXcd& Ceig)
 {
  if(Nrange>5000)
  {
- complex<double>zi(0.,1.);
- magma_trans_t transA=MagmaNoTrans;
- magma_trans_t transB=MagmaNoTrans;
- magmaDoubleComplex *mA,*mB, alpha,beta;
- magma_int_t N,n2;
- N=Nrange;
- n2=N*N;
- magma_zmalloc_pinned( &mA,    n2 );
- magma_zmalloc_pinned( &mB,    n2 );
-  #pragma omp parallel for
+ using data_type = cuDoubleComplex;
+ cublasHandle_t cublasH = NULL;
+ cudaStream_t stream = NULL;
+ int m = Nrange;
+ int n = Nrange;
+ int k = Nrange;
+ int lda = Nrange;
+ int ldb = Nrange;
+ int ldc = Nrange;
+ std::vector<data_type> A(m * m); 
+ std::vector<data_type> B (n * n);
+ #pragma omp parallel for
  for(int i=0;i<Nrange;i++)
  for(int j=0;j<Nrange;j++)
  {
-  mA[i+j*Nrange]=MAGMA_Z_MAKE(real(A(i,j)),imag(A(i,j)));
-  mB[i+j*Nrange]=MAGMA_Z_MAKE(real(B(i,j)),imag(B(i,j)));
+  A[i+j*m]=make_cuDoubleComplex(real(Aeig(i,j)),imag(Aeig(i,j)));
+  B[i+j*m]=make_cuDoubleComplex(real(Beig(i,j)),imag(Beig(i,j)));
  }
- magma_int_t info;
- magmaDoubleComplex *dA,*dB, *dC;
- info=magma_zmalloc( &dA,    n2 );
- if(info!=0)   cout<<"zmalloc "<<magma_strerror(info)<<endl;
- info=magma_zmalloc( &dB,    n2 );
- if(info!=0)   cout<<"zmalloc "<<magma_strerror(info)<<endl;
- info=magma_zmalloc( &dC,    n2 );
- if(info!=0)   cout<<"zmalloc "<<magma_strerror(info)<<endl;
- magma_queue_t queue;
- magma_queue_create(0, &queue);
- magma_zsetmatrix(N,N,mA,N,dA,N,queue);
- magma_zsetmatrix(N,N,mB,N,dB,N,queue);
- alpha=MAGMA_Z_MAKE(1.,0.);
- beta=MAGMA_Z_MAKE(0.,0.);
- magmablas_zgemm(transA,transB,N,N,N,alpha,dA,N,dB,N,beta,dC,N,queue);
- magma_zgetmatrix(N,N,dC,N,mA,N,queue);
-#pragma omp parallel for
-  for(int i=0;i<Nrange;i++)
-  for(int j=0;j<Nrange;j++)
-   C(i,j)=MAGMA_Z_REAL(mA[j*N+i])+zi*MAGMA_Z_IMAG(mA[j*N+i]);
-  magma_free(dA);
-  magma_free(dB);
-  magma_free(dC);
-  magma_free_pinned(mA);
-  magma_free_pinned(mB);
-  magma_queue_destroy(queue);
+  std::vector<data_type> C(m * n);
+  const data_type alpha =make_cuDoubleComplex(1.0,0.0);
+  const data_type beta = make_cuDoubleComplex(0.0,0.0);
+  data_type *d_A = nullptr;
+  data_type *d_B = nullptr;
+  data_type *d_C = nullptr;
+  cublasOperation_t transa = CUBLAS_OP_N;
+  cublasOperation_t transb = CUBLAS_OP_N;
+  /* step 1: create cublas handle, bind a stream */
+  cublasCreate(&cublasH);
+  cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
+  cublasSetStream(cublasH, stream);
+  /* step 2: copy data to device */
+  cudaMalloc(reinterpret_cast<void **>(&d_A), sizeof(data_type) * A.size());
+  cudaMalloc(reinterpret_cast<void **>(&d_B), sizeof(data_type) * B.size());
+  cudaMalloc(reinterpret_cast<void **>(&d_C), sizeof(data_type) * C.size());
+  cudaMemcpyAsync(d_A, A.data(), sizeof(data_type) * A.size(), cudaMemcpyHostToDevice,stream);
+  cudaMemcpyAsync(d_B, B.data(), sizeof(data_type) * B.size(), cudaMemcpyHostToDevice,stream);
+  /* step 3: compute */
+   cublasZgemm(cublasH, transa, transb, m, n, k, &alpha, d_A, lda, d_B, ldb, &beta, d_C, ldc);
+  /* step 4: copy data to host */
+   cudaMemcpyAsync(C.data(), d_C, sizeof(data_type) * C.size(), cudaMemcpyDeviceToHost,stream);
+   cudaStreamSynchronize(stream);
+ #pragma omp parallel for
+ for(int i=0;i<Nrange;i++)
+ for(int j=0;j<Nrange;j++)
+   Ceig(i,j)=complex<double>(cuCreal(C[i+j*m]), cuCimag(C[i+j*m]));
+  /* free resources */
+  cudaFree(d_A);
+  cudaFree(d_B);
+  cudaFree(d_C);
+  cublasDestroy(cublasH);
+  cudaStreamDestroy(stream);
  }
-else
+ else
  {
-  C=A*B;
+  Ceig=Aeig*Beig;
  }
 }
 

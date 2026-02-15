@@ -10,7 +10,8 @@ using namespace std::chrono;
 #define OMP_NUM_THREADS 96
 #include <omp.h>
 #include "Eigen/Eigen"
-#include "magma_v2.h"
+#include <cublas_v2.h>
+#include <cusolverDn.h>
 #include "../../include/header.h"
 
 vector<bool> decompressBits(vector<uint8_t>& bytes, size_t originalBitCount) {
@@ -29,7 +30,6 @@ int main (int argc,char* argv[])
  std::chrono::system_clock::time_point  start, now;
  double elapsed;
  start = std::chrono::system_clock::now(); 
- magma_init();
 
  int ndata=1;
 // srand(time(NULL));
@@ -560,7 +560,6 @@ for(int npol=0;npol<=0;npol++)
 // cout<<"elapsed time (s) "<<elapsed/1000.<<endl;
  }
 }
- magma_finalize();
  return 0;
 }
 
