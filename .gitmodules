@@ -1,0 +1,3 @@
+[submodule "elitho"]
+	path = elitho
+	url = git@github.com:takahashi-edalab/elitho.git

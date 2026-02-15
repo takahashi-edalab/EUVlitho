@@ -1,6 +1,3 @@
-> [!NOTE]
-> We plan to release *elitho*, our Python-based EUV lithography simulator, once the paper is accepted.
-> 
 # EUVlitho
 EUVlitho includes the following two program sets.
 1. Electromagnetic simulator for high-NA EUV lithography (elitho)
@@ -10,6 +7,7 @@ The following paper explains the details of the programs.
 - H. Tanabe, M. Shimode and A. Takahashi, "Rigorous electromagnetic simulator for extreme ultraviolet lithography and convolutional neural network reproducing electromagnetic simulations," JM3 24(2025)024201. https://doi.org/10.1117/1.JMM.24.2.024201.
 - H. Tanabe, M. Sugiyama, M. Shimode and A. Takahashi, "STCC formula including polarization and M3D effects in high-NA EUV lithography," SPIE Advance Lithography 2026, 13979-15, to be published. 
 ## 1. EUV lithography simulator (elitho)
+See details in [this repository](https://github.com/takahashi-edalab/elitho).
 
 
 ## 2. CNN for fast EUV lithography simulation
@@ -28,6 +26,8 @@ Execute cnn/cnn/predict/predict.py. Input: mask.bin (mask pattern). Output: inpu
 Execute cnn/intensity/linear/linear.py. Inputs: mask.bin, inputxx.csv. Outputs: intft.csv (image intensity of the thin mask model), intlinear.csv (image intensity calculated by Abbe's theory with M3D parameters).
 #### 2.3.2 STCC-SOCS formula with M3D parameters
 Execute cnn/intensity/stccsocs/socs.py. Inputs: mask.bin, inputxx.csv. Output: intsocs.csv (image intensity calculated by STCC-SOCS formula with M3D parameters). When this program is executed at the first time, the eigen functins of the SOCS model are calcuated and stored. This calculation will not be repeated in the second time.
+#### 2.3.3 Abbe's theory using the amplitude calculated by the electromagnetic simulation
+Compile cnn/intensity/abbe/intenisty.cpp and exectute it. Input: mask.bin, Output: emint.csv (Image intensity calculated by the electromagnetic simulation).
 ### 2.4 New data set generation
 Change the directory to cnn/cnn/data/train or validate. Modify mask.cpp to generate new mask patterns. Modify makem3d according to your enviroment. Modify "ndata" in m3d.cpp and compile it by "make -f makem3d." The calculation may take ~ 3 min for each mask pattern. After the calculation execute compress.py to rearrange the inputs for CNN.
 
