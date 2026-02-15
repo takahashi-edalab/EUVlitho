@@ -13,7 +13,7 @@ See details in [this repository](https://github.com/takahashi-edalab/elitho).
 ## 2. CNN for fast EUV lithography simulation
 ### 2.1 Requirements
 - CNN test (python) : Pytorch Ligtning (2.1.0) and CUDA (12.9).
-- New data set generation (C++): OpenBLAS, Eigen (3.4.0), CUDA (12.9) and MAGMA (2.9.0).  
+- New data set generation (C++): OpenBLAS, Eigen (3.4.0), CUDA (12.9) and cuda_toolkit (12.9).  
 ### 2.2 CNN test
 #### 2.2.1 Traing test data
 Expand cnn/cnn/data.tar.gz.
@@ -29,7 +29,7 @@ Execute cnn/intensity/stccsocs/socs.py. Inputs: mask.bin, inputxx.csv. Output: i
 #### 2.3.3 Abbe's theory using the amplitude calculated by the electromagnetic simulation
 Compile cnn/intensity/abbe/intenisty.cpp and exectute it. Input: mask.bin, Output: emint.csv (Image intensity calculated by the electromagnetic simulation).
 ### 2.4 New data set generation
-Change the directory to cnn/cnn/data/train or validate. Modify mask.cpp to generate new mask patterns. Modify makem3d according to your enviroment. Modify "ndata" in m3d.cpp and compile it by "make -f makem3d." The calculation may take ~ 3 min for each mask pattern. After the calculation execute compress.py to rearrange the inputs for CNN.
+Change the directory to cnn/cnn/data/train or validate. Modify mask.cpp to generate new mask patterns. Modify makem3d according to your enviroment. Modify "ndata" in m3d.cpp and compile it by "make -f makem3d." The calculation may take ~ 1 min for each mask pattern. After the calculation execute compress.py to rearrange the inputs for CNN.
 
 ### 2.5 References
 - H. Tanabe, S. Sato, and A. Takahashi, “Fast EUV lithography simulation using convolutional neural network,” JM3 20(2021)041202. https://doi.org/10.1117/1.JMM.20.4.041202
