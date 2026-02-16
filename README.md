@@ -27,9 +27,9 @@ Execute cnn/intensity/linear/linear.py. Inputs: mask.bin, inputxx.csv. Outputs: 
 #### 2.3.2 STCC-SOCS formula with M3D parameters
 Execute cnn/intensity/stccsocs/socs.py. Inputs: mask.bin, inputxx.csv. Output: intsocs.csv (image intensity calculated by STCC-SOCS formula with M3D parameters). When this program is executed at the first time, the eigen functins of the SOCS model are calcuated and stored. This calculation will not be repeated in the second time.
 #### 2.3.3 Abbe's theory using the amplitude calculated by the electromagnetic simulation
-Compile cnn/intensity/abbe/intenisty.cpp and exectute it. Input: mask.bin, Output: emint.csv (Image intensity calculated by the electromagnetic simulation).
+Modify Makefile according to your enviroment. Compile cnn/intensity/abbe/intenisty.cpp and exectute it. Input: mask.bin, Output: emint.csv (Image intensity calculated by the electromagnetic simulation).
 ### 2.4 New data set generation
-Change the directory to cnn/cnn/data/train or validate. Modify mask.cpp to generate new mask patterns. Modify makem3d according to your enviroment. Modify "ndata" in m3d.cpp and compile it by "make -f makem3d." The calculation may take ~ 1 min for each mask pattern. After the calculation execute compress.py to rearrange the inputs for CNN.
+Change the directory to cnn/cnn/data/train or validate. Modify mask.cpp to generate new mask patterns. Modify Makefile according to your enviroment. Modify "ndata" in m3d.cpp and compile it. The calculation may take ~ 1 min for each mask pattern. After the calculation execute compress.py to rearrange the inputs for CNN.
 
 ### 2.5 References
 - H. Tanabe, S. Sato, and A. Takahashi, “Fast EUV lithography simulation using convolutional neural network,” JM3 20(2021)041202. https://doi.org/10.1117/1.JMM.20.4.041202
