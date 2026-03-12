@@ -460,7 +460,8 @@ void rotate(double k,int MX,int MY,double px,double py,double sx0,double sy0,Eig
  }
  for(int i=0;i<=2;i++)
  for(int j=0;j<=1;j++)
-   R(i,j)=sqrt(k/abs(pp(2)))*(esp(i)*es(j)+emp(i)*em(j));
+   R(i,j)=(esp(i)*es(j)+emp(i)*em(j));
+//   R(i,j)=sqrt(k/abs(pp(2)))*(esp(i)*es(j)+emp(i)*em(j));
 }
 
 void source(double NA,int type,double sigma1,double sigma2,double openangle,double k,double dx,double dy,

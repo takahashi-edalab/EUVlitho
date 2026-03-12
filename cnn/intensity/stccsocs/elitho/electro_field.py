@@ -34,7 +34,8 @@ def polarization_rotation(k, MX, MY, px, py, sx0, sy0) -> np.ndarray:
 
     for i in range(3):
         for j in range(2):
-            R[i, j] = scale * (esp[i] * es[j] + emp[i] * em[j])
+            R[i, j] = (esp[i] * es[j] + emp[i] * em[j])
+#           R[i, j] = scale * (esp[i] * es[j] + emp[i] * em[j])
 
     return R
 
