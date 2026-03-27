@@ -512,15 +512,18 @@ void absorberS(char polar,int LMAX,int MMAX,int Nrange,const vector<int>& lindex
  }
 
  /* free resources */
-    cudaFree(d_A);
-    cudaFree(d_W);
-    cudaFree(d_VL);
-//    cudaFree(d_VR);
-    cudaFree(d_info);
-    cudaFree(d_work);
-    cudaFreeHost(h_work);
-    cusolverDnDestroy(cusolverH);
-    cudaStreamDestroy(stream);
+if (d_A)    cudaFree(d_A);
+if (d_W)    cudaFree(d_W);
+if (d_VL)   cudaFree(d_VL);  
+if (d_VR)   cudaFree(d_VR);
+if (d_info) cudaFree(d_info);
+
+if (d_work) cudaFree(d_work);
+if (h_work) cudaFreeHost(h_work);
+
+if (params)    cusolverDnDestroyParams(params);
+if (cusolverH) cusolverDnDestroy(cusolverH);
+if (stream)    cudaStreamDestroy(stream);
 
  for (int i = 0; i<Nrange; i++)
  {
@@ -899,15 +902,18 @@ void absorberS0(char polar,int LMAX,int MMAX,int Nrange,const vector<int>& linde
  }
 
  /* free resources */
-    cudaFree(d_A);
-    cudaFree(d_W);
-    cudaFree(d_VL);
-//    cudaFree(d_VR);
-    cudaFree(d_info);
-    cudaFree(d_work);
-    cudaFreeHost(h_work);
-    cusolverDnDestroy(cusolverH);
-    cudaStreamDestroy(stream);
+if (d_A)    cudaFree(d_A);
+if (d_W)    cudaFree(d_W);
+if (d_VL)   cudaFree(d_VL);  
+if (d_VR)   cudaFree(d_VR);
+if (d_info) cudaFree(d_info);
+
+if (d_work) cudaFree(d_work);
+if (h_work) cudaFreeHost(h_work);
+
+if (params)    cusolverDnDestroyParams(params);
+if (cusolverH) cusolverDnDestroy(cusolverH);
+if (stream)    cudaStreamDestroy(stream);
 
  for (int i = 0; i<Nrange; i++)
  {
