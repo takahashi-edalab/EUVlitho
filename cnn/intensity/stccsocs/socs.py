@@ -187,9 +187,14 @@ def socs(z,maskname,a0,ax,ay):
 #	mask2d=read_bits(maskname)
 #	pattern=np.array(mask2d)*(ampab-ampvc)+ampvc*np.ones(const.NDIVX*const.NDIVY)
 	pattern=np.array(mask2d)*(ampvc-ampab)+ampab*np.ones(const.NDIVX*const.NDIVY)
-	pattern.resize(const.NDIVX,const.NDIVY)
-	pattern=pattern.astype(np.complex64)
-	cpattern=cp.asarray(pattern)
+#	pattern.resize(const.NDIVX,const.NDIVY)
+#	pattern=pattern.astype(np.complex64)
+#	cpattern=cp.asarray(pattern)
+	pattern = pattern.reshape(const.NDIVY, const.NDIVX)
+	pattern = np.flipud(pattern)  
+	pattern = pattern.T
+	pattern = pattern.astype(np.complex128)
+	cpattern = cp.asarray(pattern.copy())  
 
 	start = time.perf_counter()
 	intensity=intsocs(cpattern,a0,ax,ay,phase0,

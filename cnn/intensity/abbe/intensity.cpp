@@ -9,7 +9,7 @@ using namespace std::chrono;
 #define OPENBLAS_NUM_THREADS 96
 #define OMP_NUM_THREADS 96
 #include <omp.h>
-#include "Eigen/Eigen"
+#include "/home/tanabe/eigen/eigen-3.4.0/Eigen/Eigen"
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <cufft.h>
@@ -65,7 +65,7 @@ int main (int argc,char* argv[])
  double NA,sigma1,sigma2,openangle;
  NA = 0.33;
 // NA=0.55;
- int type=2;
+ int type=1;
 // int type=3; //Illumination type: 0 conventional, 1 annular, 2 X dipole, 3 Y dipole
  sigma1 = 0.9; //Outer sigma
  sigma2=0.55; //Inner sigma
@@ -203,7 +203,7 @@ int main (int argc,char* argv[])
  bits= decompressBits(bytes, NDIVSQ);
  for(int i=0;i<NDIVSQ;i++)
  {
-  mask2d[i]=1-static_cast<int>(bits[i]);
+  mask2d[i]=static_cast<int>(bits[i]);
  }
 
  cufftDoubleComplex *h_fnx, *d_fnx,*h_fny, *d_fny,*h_fnz, *d_fnz;

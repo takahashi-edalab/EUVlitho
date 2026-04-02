@@ -207,9 +207,14 @@ def linear(z,maskname,re0,im0,rex,imx,rey,imy):
 #	mask2d=read_bits(maskname)
 #	pattern=np.array(mask2d)*(ampab-ampvc)+ampvc*np.ones(const.NDIVX*const.NDIVY)
 	pattern=np.array(mask2d)*(ampvc-ampab)+ampab*np.ones(const.NDIVX*const.NDIVY)
-	pattern.resize(const.NDIVX,const.NDIVY)
-	pattern=pattern.astype(np.complex128)
-	cpattern=cp.asarray(pattern)
+#	pattern.resize(const.NDIVX,const.NDIVY)
+#	pattern=pattern.astype(np.complex128)
+#	cpattern=cp.asarray(pattern)
+	pattern = pattern.reshape(const.NDIVY, const.NDIVX)
+	pattern = np.flipud(pattern)  
+	pattern = pattern.T
+	pattern = pattern.astype(np.complex128)
+	cpattern = cp.asarray(pattern.copy()) 
 	a0=re0+1j*im0
 	ax=rex+1j*imx
 	ay=rey+1j*imy

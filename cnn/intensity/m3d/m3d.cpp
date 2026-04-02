@@ -9,7 +9,7 @@ using namespace std::chrono;
 #define OPENBLAS_NUM_THREADS 96
 #define OMP_NUM_THREADS 96
 #include <omp.h>
-#include "Eigen/Eigen"
+#include "/home/tanabe/eigen/eigen-3.4.0/Eigen/Eigen"
 #include <cublas_v2.h>
 #include <cusolverDn.h>
 #include "../../include/header.h"
@@ -205,7 +205,7 @@ for(int nsample=0;nsample<ndata;nsample++)
  bits= decompressBits(bytes, NDIVSQ);
  for(int i=0;i<NDIVSQ;i++)
  {
-  mask2d[i]=1-static_cast<int>(bits[i]);
+  mask2d[i]=static_cast<int>(bits[i]);
  }
 
 //for(int npol=0;npol<=1;npol++)

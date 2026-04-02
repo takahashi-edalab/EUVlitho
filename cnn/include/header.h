@@ -1153,6 +1153,21 @@ void maskamp(int FDIVX,int FDIVY, int NDIVX, int NDIVY, int* mask2d,
   meshX=FDIVX/NDIVX;
   meshY=FDIVY/NDIVY;
   Eigen::MatrixXcd pattern(FDIVX,FDIVY);
+
+  for (int j = 0; j < FDIVY; j++)
+  {
+    int jj=NDIVY-j/meshY;
+    for (int i = 0; i < FDIVX; i++)
+    {
+    int ii=i/meshX;
+    if(mask2d[NDIVX*jj+ii]==0)
+      pattern(i, j) = ampta;
+    else 
+      pattern(i, j) = ampvc;
+   }
+  }
+
+/*
   for (int i = 0; i < FDIVX; i++)
   {
     int ii=i/meshX;
@@ -1160,12 +1175,12 @@ void maskamp(int FDIVX,int FDIVY, int NDIVX, int NDIVY, int* mask2d,
     {
     int jj=j/meshY;
     if(mask2d[NDIVY*ii+jj]==1)
-//    if(mask2d[ii][jj]==1)
       pattern(i, j) = ampta;
     else 
       pattern(i, j) = ampvc;
     }
   }
+*/
   vector< complex<double> > ampx(FDIVX), ampy(FDIVY);
   Eigen::MatrixXcd ftmp (FDIVX, Mrange2);
   for (int i = 0; i < FDIVX; i++)
