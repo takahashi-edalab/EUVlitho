@@ -55,7 +55,8 @@ class IlluminationType(Enum):
 
 
 # optical type
-illumination_type = IlluminationType.DIPOLE_X
+#illumination_type = IlluminationType.DIPOLE_X
+illumination_type = IlluminationType.ANNULAR
 sigma1 = 0.9  # outer sigma
 sigma2 = 0.55  # inner sigma -> 間を光らせる
 openangle = 90.0  # opening angle for dipole illumination

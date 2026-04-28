@@ -4,7 +4,7 @@
 #include <cstdlib>
 using namespace std;
 
-#include "./mVDF.h"
+#include "./mVBF.h"
 
 vector<uint8_t> compressBits(vector<bool>& bits) {
     vector<uint8_t> bytes;
@@ -52,7 +52,7 @@ int main (int argc,char* argv[])
    {
     for (int i = 0; i < NDIVX; i++)
     {
-      ofsmask<<mask2d[NDIVY*i +NDIVY-1-j]<<",";
+      ofsmask<<mask2d[NDIVX*j +i]<<",";
     }
     ofsmask<<endl;
    }

@@ -42,7 +42,7 @@ for i in range(NDIV):
         columnmat[i,j]=rowmat[j,i]
 
 maskall=np.empty((ndata,NDIVM,NDIVM),dtype='float16')
-row=read_bits('mask.bin')
+row=read_bits('maska9398.bin')
 for idx in range(ndata):
     mask0=np.empty(NDIV*NDIV,dtype=int)
     for i in range(NDIV*NDIV):

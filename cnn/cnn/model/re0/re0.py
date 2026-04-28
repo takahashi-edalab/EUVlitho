@@ -35,7 +35,7 @@ def ishift(ncut,lorder,morder,rea,ima,idx,lshift,mshift):
         iamp[i]=rea[idx][i]*sinlm[lm]+ima[idx][i]*coslm[lm]
     return iamp
 
-class MaskampDatasetTrain(Dataset):
+class MaskampDataset(Dataset):
     def __init__(self,ntrain,ndata,maskall,ncut,lorder,morder,rea,ima):
         self.ntrain=ntrain
         self.ndata=ndata
@@ -52,29 +52,10 @@ class MaskampDatasetTrain(Dataset):
         lshift=random.randrange(NDIVM)
         mshift=random.randrange(NDIVM)
         x=self.maskall[id]
-        x=np.roll(x,(-lshift,-mshift),axis=(0,1))
+        x=np.roll(x,(mshift,-lshift),axis=(0,1))
+#        x=np.roll(x,(-lshift,-mshift),axis=(0,1))
         y=rshift(self.ncut,self.lorder,self.morder,self.rea,self.ima,id,lshift,mshift)
 #        y=ishift(self.ncut,self.lorder,self.morder,self.rea,self.ima,id,lshift,mshift)
-        x=x.reshape(1,NDIVM,NDIVM)
-        x=torch.from_numpy(x)
-        y=torch.from_numpy(y)
-        return x, y
-
-class MaskampDatasetVal(Dataset):
-    def __init__(self,nval,maskall,ncut,lorder,morder,rea,ima):
-        self.nval=nval
-        self.maskall=maskall
-        self.ncut=ncut
-        self.lorder=lorder
-        self.morder=morder
-        self.rea=rea
-        self.ima=ima
-    def __len__(self):
-        return self.nval
-    def __getitem__(self, idx):
-        x=self.maskall[idx]
-        y=rshift(self.ncut,self.lorder,self.morder,self.rea,self.ima,idx,0,0)
-#        y=ishift(self.ncut,self.lorder,self.morder,self.rea,self.ima,idx,0,0)
         x=x.reshape(1,NDIVM,NDIVM)
         x=torch.from_numpy(x)
         y=torch.from_numpy(y)
@@ -137,9 +118,10 @@ class CNNmodel(pl.LightningModule):
 			self.log('val_loss_'+str(i), loss, sync_dist=True)
 
 if __name__ == "__main__":
-    ntrain=100000
-    ndata=2000
-    nval=200
+    ntrain=50000
+    ndata=1000
+    nval=5000
+    nvaldata=100
 
     ncut=1901
 #    ncut=1749
@@ -172,7 +154,7 @@ if __name__ == "__main__":
 
     rea_val=np.load(valdir+'ampdata/re0.npy')
     ima_val=np.load(valdir+'ampdata/im0.npy')
-    for idx in range(nval):
+    for idx in range(nvaldata):
         for i in range(ncut):
             rea_val[idx][i]=rea_val[idx][i]*fac[i]
             ima_val[idx][i]=ima_val[idx][i]*fac[i]
@@ -180,8 +162,8 @@ if __name__ == "__main__":
     maskall_train=np.load(traindir+'maskdata/mask.npy')
     maskall_val=np.load(valdir+'maskdata/mask.npy')
 
-    data_train = MaskampDatasetTrain(ntrain,ndata,maskall_train,ncut,lorder,morder,rea_train,ima_train)
-    data_val = MaskampDatasetVal(nval,maskall_val,ncut,lorder,morder,rea_val,ima_val)
+    data_train = MaskampDataset(ntrain,ndata,maskall_train,ncut,lorder,morder,rea_train,ima_train)
+    data_val =   MaskampDataset(nval,nvaldata,maskall_val,ncut,lorder,morder,rea_val,ima_val)
 
 #    train_dataloader=DataLoader(data_train,batch_size=128,shuffle=True,num_workers=os.cpu_count(),pin_memory=True)
 #    val_dataloader=DataLoader(data_val,batch_size=128,num_workers=os.cpu_count(),pin_memory=True)
@@ -190,7 +172,7 @@ if __name__ == "__main__":
 
     model = CNNmodel(ncut)
     logger = pl.loggers.CSVLogger("./",version=0, name="history")
-    trainer = pl.Trainer(accelerator='gpu',devices=[0],strategy="ddp",logger=logger,max_epochs=50)
+    trainer = pl.Trainer(accelerator='gpu',devices=[0,1],strategy="ddp",logger=logger,max_epochs=50)
     trainer.fit(model, train_dataloader, val_dataloader)
 
     trainer.save_checkpoint("model.ckpt")

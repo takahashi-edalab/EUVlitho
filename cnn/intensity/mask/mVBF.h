@@ -14,7 +14,7 @@ void maskgen(int *mask2d, int NDIVX, int NDIVY)
     {
        for(int i=sum;i<min(sum+cd,NDIVX);i++)  
         for(int j=0;j<NDIVY;j++)
-         mask2d[NDIVX*i+j]=0;
+         mask2d[NDIVX*j+i]=1;
         space=0;
       }
       else
@@ -22,7 +22,7 @@ void maskgen(int *mask2d, int NDIVX, int NDIVY)
        randmask(mask1dY,NDIVY,gap);
        for(int i=sum;i<min(sum+cd,NDIVX);i++)  
        for(int j=0;j<NDIVY;j++)
-        mask2d[NDIVX*i+j]=mask1dY[j];
+        mask2d[NDIVX*j+i]=mask1dY[j];
         space=1;
       }
     sum=sum+cd;
@@ -31,10 +31,10 @@ void maskgen(int *mask2d, int NDIVX, int NDIVY)
   {
    if(space == 0)
      for(int j=0;j<NDIVY;j++)
-     mask2d[NDIVX*i+j]=0;
+     mask2d[NDIVX*j+i]=0;
    else
    for(int j=0;j<NDIVY;j++)
-       mask2d[NDIVX*i+j]=mask1dY[j];
+       mask2d[NDIVX*j+i]=mask1dY[j];
   }
 }
 
@@ -50,9 +50,9 @@ void randmask(int *mask1d, int NDIV, int gap)
  for(int i=sum;i<min(sum+a,NDIV);i++)
       {
      if(line == 1)
-      mask1d[i] = 1;
-      else
       mask1d[i] = 0;
+      else
+      mask1d[i] = 1;
      }
     if(line == 1)
      line = 0;
@@ -63,9 +63,9 @@ void randmask(int *mask1d, int NDIV, int gap)
  for(int i=sum;i<NDIV;i++)
   {
    if(line == 0)
-    mask1d[i] = 1;
-   else
     mask1d[i] = 0;
+   else
+    mask1d[i] = 1;
   }
 }
 

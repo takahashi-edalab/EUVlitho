@@ -9,7 +9,7 @@ using namespace std::chrono;
 #define OPENBLAS_NUM_THREADS 96
 #define OMP_NUM_THREADS 96
 #include <omp.h>
-#include "/home/tanabe/eigen/eigen-3.4.0/Eigen/Eigen"
+#include "Eigen/Eigen"
 #include <cublas_v2.h>
 #include <cusolverDn.h>
 #include "../../include/header.h"
@@ -215,7 +215,7 @@ for(int npol=0;npol<=0;npol++)
  for(int i=0;i<NDIVX;i++)
   {
    for(int j=0;j<NDIVY;j++)
-    mask2d0[NDIVY*i+j]=0;
+    mask2d0[NDIVY*i+j]=1;
   }
  if(npol==0)
   ampS('X',Axvc, NDIVX, NDIVY, mask2d0, LMAX, Lrange2, MMAX, Mrange2, Nrangep, lindexp, mindexp, FDIVX, FDIVY,
@@ -228,7 +228,7 @@ for(int npol=0;npol<=0;npol++)
  for(int i=0;i<NDIVX;i++)
   {
    for(int j=0;j<NDIVY;j++)
-    mask2d0[NDIVY*i+j]=1;
+    mask2d0[NDIVY*i+j]=0;
   }
  if(npol==0)
    ampS('X',Axab, NDIVX, NDIVY, mask2d0, LMAX, Lrange2, MMAX, Mrange2, Nrangep, lindexp, mindexp, FDIVX, FDIVY,
@@ -285,8 +285,11 @@ for(int npol=0;npol<=0;npol++)
       NA, MX, MY, dx, dy, lambda, NABS, NML, lsmaxX, lsmaxY, k, kx0, ky0, eabs, dabs, cexpX,cexpY);
 
  for(int i=0;i<NDIVX;i++)
-   for(int j=0;j<NDIVY;j++)
-    mask(i,j)=mask2d[NDIVY*i+j];
+ for(int j=0;j<NDIVY;j++)
+ {
+  int jj=NDIVY-j;
+  mask(i,j)=mask2d[NDIVX*jj+i];
+ }
 
   int idiv = 1./ delta + 0.000001;
   for (int i = 0; i< NDIVX; i++)
@@ -340,10 +343,12 @@ for(int npol=0;npol<=0;npol++)
      {
      kyp=2.*pi*(jp-lpmaxY)/dy;
      phasesp=exp(-zi*(kxs*kxp+kxp*kxp/2.+kys*kyp+kyp*kyp/2.)/k*z0);
-     fampxx[is][js](ip,jp)=fmask(ip,jp)*phasesp*(abxx(lsmaxX,lsmaxY)-vcxx(lsmaxX,lsmaxY));
+     fampxx[is][js](ip,jp)=fmask(ip,jp)*phasesp*(vcxx(lsmaxX,lsmaxY)-abxx(lsmaxX,lsmaxY));
+//     fampxx[is][js](ip,jp)=fmask(ip,jp)*phasesp*(abxx(lsmaxX,lsmaxY)-vcxx(lsmaxX,lsmaxY));
       if((ip==lpmaxX)&&(jp==lpmaxY))
       {
-        fampxx[is][js](ip,jp)+=vcxx(is,js);
+        fampxx[is][js](ip,jp)+=abxx(is,js);
+//        fampxx[is][js](ip,jp)+=vcxx(is,js);
       }
      }
     }
