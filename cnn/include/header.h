@@ -1156,7 +1156,7 @@ void maskamp(int FDIVX,int FDIVY, int NDIVX, int NDIVY, int* mask2d,
 
   for (int j = 0; j < FDIVY; j++)
   {
-    int jj=NDIVY-j/meshY;
+    int jj=NDIVY-1-j/meshY;
     for (int i = 0; i < FDIVX; i++)
     {
     int ii=i/meshX;
