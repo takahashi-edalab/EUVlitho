@@ -287,7 +287,7 @@ for(int npol=0;npol<=0;npol++)
  for(int i=0;i<NDIVX;i++)
  for(int j=0;j<NDIVY;j++)
  {
-  int jj=NDIVY-j;
+  int jj=NDIVY-1-j;
   mask(i,j)=mask2d[NDIVX*jj+i];
  }
 
