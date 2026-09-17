@@ -5,7 +5,7 @@ EUVlitho includes the following two program sets.
 
 The following paper explains the details of the programs.  
 - H. Tanabe, M. Shimode and A. Takahashi, "Rigorous electromagnetic simulator for extreme ultraviolet lithography and convolutional neural network reproducing electromagnetic simulations," JM3 24(2025)024201. https://doi.org/10.1117/1.JMM.24.2.024201.
-- H. Tanabe, M. Sugiyama, M. Shimode and A. Takahashi, "STCC formula including polarization and M3D effects in high-NA EUV lithography," SPIE Advance Lithography 2026, 13979-15, to be published. 
+- H. Tanabe, M. Sugiyama, M. Shimode and A. Takahashi, "Source-position-dependent transmission cross coefficient formula including polarization and mask three-dimensional effects in high-numerical-aperture extreme ultraviolet lithography," JM3 25(2026)031604. https://doi.org/10.1117/1.JMM.25.3.031604. 
 ## 1. EUV lithography simulator (elitho)
 See details in [this repository](https://github.com/takahashi-edalab/elitho).
 
